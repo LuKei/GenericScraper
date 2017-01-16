@@ -1,4 +1,3 @@
-import sys
 import sqlite3
 import Website
 import LegalText
@@ -23,27 +22,27 @@ class DatabaseAccess:
 
     def websiteExists(self, name):
         cursor = self.connection.cursor()
-        cursor.execute("SELECT Id FROM Website WHERE name = ?", name)
+        cursor.execute("SELECT Id FROM Website WHERE name = ?", (name,))
         r = cursor.fetchone()
-        if len(r) > 0:
-            return True
-        return False
+        if r is None:
+            return False
+        return True
 
 
 
-    def legalTextExists(self, title):
+    def legalTextExists(self, text):
         cursor = self.connection.cursor()
-        cursor.execute("SELECT Id FROM LegalText WHERE title = ?", title)
+        cursor.execute("SELECT Id FROM LegalText WHERE title = ?", (text.title,))
         r = cursor.fetchone()
-        if len(r) > 0:
-            return True
-        return False
+        if r is None:
+            return False
+        return True
 
 
     def legalTextTitlesInDb(self, website):
         cursor = self.connection.cursor()
         cursor.execute("SELECT title FROM LegalText AS lt INNER JOIN Website AS w ON lt.WebsiteId = w.Id "
-                       "WHERE w.name = ?", website.name)
+                       "WHERE w.name = ?", (website.name,))
         return cursor.fetchall()
 
 
@@ -51,25 +50,34 @@ class DatabaseAccess:
     def addWebsite(self, website):
         if self.websiteExists(website.name):
            print("Es existiert bereits eine Webseite mit diesem Namen.")
-           return
+           return False
 
         cursor = self.connection.cursor()
-        tupleToInsert = (website.name, website.url, website.isUsingAjax, website.isMultiPage, website.nextPageHtmlFrag,
+        tupleToInsert = (None, website.name, website.url, website.isUsingAjax, website.isMultiPage, website.nextPageHtmlFrag,
                          website.listItemHtmlFrag, website.downloadHtmlFrag, website.legalTextTitleHtmlFrag)
-        cursor.execute("INSERT INTO Website VALUES(?,?,?,?,?,?,?,?)", tupleToInsert)
+        cursor.execute("INSERT INTO Website VALUES(?,?,?,?,?,?,?,?,?)", tupleToInsert)
+        return True
 
 
 
     def addLegalText(self, legalText, website):
         #TODO: umbauen, so dass mehrere Texte gleichzeitig eingefügt werden können
-        if self.legalTextExists(self, legalText.title):
+        if self.legalTextExists(legalText):
             print("Ein Gesetzestext mit dem Titel" + legalText.title + "existert bereits.")
-            return
+            return False
 
         cursor = self.connection.cursor()
-        tupleToInsert = (legalText.title, legalText.text)
-        cursor.execute("INSERT INTO Website VALUES(?,?,?,?,?,?,?,?)", tupleToInsert)
+        r = cursor.execute("SELECT Id FROM Website AS w WHERE w.name = ?", (website.name,)).fetchone()
+        if r is None:
+            print("Eine Webseite mit diesem Namen existiert nicht. Fügen Sie den Gesetzestext einer exsitierenden "
+                  "Webseite hinzu")
+            return False
 
+        websiteId = int(r[0])
+
+        tupleToInsert = (None, legalText.title, legalText.text, legalText.location, websiteId)
+        cursor.execute("INSERT INTO LegalText VALUES(?,?,?,?,?)", tupleToInsert)
+        return True
 
 
     def getWebsite(self, name):
@@ -79,10 +87,10 @@ class DatabaseAccess:
 
         cursor = self.connection.cursor()
         cursor.execute("SELECT w.name, w.url, w.isUsingAjax, w.isMultiPage, w.nextPageHtmlFrag, w.listItemHtmlFrag,"
-                       " w.downloadHtmlFrag, w.legalTextTitleHtmlFrag FROM Website AS w WHERE name = ?", name)
+                       " w.downloadHtmlFrag, w.legalTextTitleHtmlFrag FROM Website AS w WHERE name = ?", (name,))
         r = cursor.fetchone()
 
-        website = Website(r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7])
+        website = Website.Website(r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7])
         return website
 
 
@@ -92,13 +100,17 @@ class DatabaseAccess:
 
         cursor = self.connection.cursor()
         cursor.execute("SELECT lt.title, lt.text, lt.location FROM LegalText AS lt INNER JOIN Website AS w ON lt.WebsiteId = w.Id "
-                       "WHERE w.name = ?", website.name)
+                       "WHERE w.name = ?", (website.name,))
         rows = cursor.fetchall()
 
         for r in rows:
-            text = LegalText(r[0],r[1],r[2])
+            text = LegalText.LegalText(r[0],r[1],r[2], website)
             texts.append(text)
 
         return texts
+
+    def close(self):
+        self.connection.close()
+
 
 
