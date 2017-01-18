@@ -1,6 +1,8 @@
 import sqlite3
-import Website
-import LegalText
+from Website import Website
+from LegalText import LegalText
+from HtmlIdentifier import IdentifierType
+from HtmlIdentifier import HtmlIdentifier
 
 class DatabaseAccess:
 
@@ -10,12 +12,14 @@ class DatabaseAccess:
         cursor = self.connection.cursor()
 
         cursor.execute("CREATE TABLE IF NOT EXISTS Website(Id INTEGER PRIMARY KEY, name TEXT NOT NULL, "
-                            "url TEXT NOT NULL, isUsingAjax BOOLEAN NOT NULL, isMultiPage BOOLEAN NOT NULL, "
-                            "nextPageHtmlFrag TEXT NOT NULL, listItemHtmlFrag TEXT NOT NULL, "
-                            "downloadHtmlFrag TEXT NOT NULL, legalTextTitleHtmlFrag TEXT NOT NULL)")
+                            "url TEXT NOT NULL, isUsingAjax BOOLEAN NOT NULL, isMultiPage BOOLEAN NOT NULL)")
 
         cursor.execute("CREATE TABLE IF NOT EXISTS LegalText(Id INTEGER PRIMARY KEY, title TEXT NOT NULL, "
                             "text TEXT NOT NULL, location TEXT NOT NULL, WebsiteId INTEGER NOT NULL, "
+                       "FOREIGN KEY (WebsiteId) REFERENCES Website(Id))")
+
+        cursor.execute("CREATE  TABLE  IF NOT EXISTS HtmlIdentifier(Id INTEGER PRIMARY KEY, tag TEXT NOT NULL, "
+                       "class TEXT NOT NULL, type INTEGER NOT NULL, WebsiteId INTEGER NOT NULL, "
                        "FOREIGN KEY (WebsiteId) REFERENCES Website(Id))")
 
 
@@ -53,9 +57,21 @@ class DatabaseAccess:
            return False
 
         cursor = self.connection.cursor()
-        tupleToInsert = (None, website.name, website.url, website.isUsingAjax, website.isMultiPage, website.nextPageHtmlFrag,
-                         website.listItemHtmlFrag, website.downloadHtmlFrag, website.legalTextTitleHtmlFrag)
-        cursor.execute("INSERT INTO Website VALUES(?,?,?,?,?,?,?,?,?)", tupleToInsert)
+
+        websiteToInsert = (None, website.name, website.url, website.isUsingAjax, website.isMultiPage)
+        cursor.execute("INSERT INTO Website VALUES(?,?,?,?,?)", websiteToInsert)
+
+        r = cursor.execute("SELECT Id FROM Website AS w WHERE w.name = ?", (website.name,)).fetchone()
+        websiteId = int(r[0])
+
+        identifiersToInsert = (
+            (None, website.nextPageIdentifier.tag, website.nextPageIdentifier.class_, website.nextPageIdentifier.type.value, websiteId),
+            (None, website.listItemIdentifier.tag, website.listItemIdentifier.class_, website.listItemIdentifier.type.value,websiteId),
+            (None, website.downloadLinkIdentifier.tag, website.downloadLinkIdentifier.class_, website.downloadLinkIdentifier.type.value,websiteId),
+            (None, website.legalTextTitleIdentifier.tag, website.legalTextTitleIdentifier.class_, website.legalTextTitleIdentifier.type.value,websiteId))
+        for i in range(0,len(identifiersToInsert)):
+            cursor.execute("INSERT INTO HtmlIdentifier VALUES (?,?,?,?,?)", identifiersToInsert[i])
+
         return True
 
 
@@ -63,7 +79,7 @@ class DatabaseAccess:
     def addLegalText(self, legalText, website):
         #TODO: umbauen, so dass mehrere Texte gleichzeitig eingefügt werden können
         if self.legalTextExists(legalText):
-            print("Ein Gesetzestext mit dem Titel" + legalText.title + "existert bereits.")
+            print("Ein Gesetzestext mit dem Titel " + legalText.title + " existert bereits.")
             return False
 
         cursor = self.connection.cursor()
@@ -86,11 +102,24 @@ class DatabaseAccess:
             return None
 
         cursor = self.connection.cursor()
-        cursor.execute("SELECT w.name, w.url, w.isUsingAjax, w.isMultiPage, w.nextPageHtmlFrag, w.listItemHtmlFrag,"
-                       " w.downloadHtmlFrag, w.legalTextTitleHtmlFrag FROM Website AS w WHERE name = ?", (name,))
-        r = cursor.fetchone()
+        cursor.execute("SELECT Id, name, url, isUsingAjax, isMultiPage FROM Website WHERE name = ?", (name,))
+        r1 = cursor.fetchone()
 
-        website = Website.Website(r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7])
+        cursor.execute("SELECT tag, class, type FROM HtmlIdentifier WHERE WebsiteId = ? AND type = ?", (r1[0], IdentifierType.NEXTPAGE.value))
+        r2 = cursor.fetchone()
+        nextPageIdentifier = HtmlIdentifier(r2[0],r2[1],IdentifierType(r2[2]))
+        cursor.execute("SELECT tag, class, type FROM HtmlIdentifier WHERE WebsiteId = ? AND type = ?", (r1[0], IdentifierType.LISTITEM.value))
+        r2 = cursor.fetchone()
+        listItemIdentifier = HtmlIdentifier(r2[0], r2[1], IdentifierType(r2[2]))
+        cursor.execute("SELECT tag, class, type FROM HtmlIdentifier WHERE WebsiteId = ? AND type = ?", (r1[0], IdentifierType.DOWNLOADLINK.value))
+        r2 = cursor.fetchone()
+        downloadLinkIdentifier = HtmlIdentifier(r2[0], r2[1], IdentifierType(r2[2]))
+        cursor.execute("SELECT tag, class, type FROM HtmlIdentifier WHERE WebsiteId = ? AND type = ?", (r1[0], IdentifierType.LEGALTEXTTITLE.value))
+        r2 = cursor.fetchone()
+        legalTextTitleIdentifier = HtmlIdentifier(r2[0], r2[1], IdentifierType(r2[2]))
+
+        website = Website(r1[1], r1[2], r1[3], r1[4], nextPageIdentifier, listItemIdentifier, downloadLinkIdentifier, legalTextTitleIdentifier)
+
         return website
 
 
@@ -104,7 +133,7 @@ class DatabaseAccess:
         rows = cursor.fetchall()
 
         for r in rows:
-            text = LegalText.LegalText(r[0],r[1],r[2], website)
+            text = LegalText(r[0],r[1],r[2], website)
             texts.append(text)
 
         return texts

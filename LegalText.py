@@ -1,5 +1,3 @@
-import sys
-import Website
 
 class LegalText:
 
