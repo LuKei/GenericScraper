@@ -11,7 +11,6 @@ class Website:
         self.identifiers = identifiers
 
     def getIdentifier(self, type=IdentifierType.NONE):
-
         for identifier in self.identifiers:
             if identifier.type == type:
                 return identifier

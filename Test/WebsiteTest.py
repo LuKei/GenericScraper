@@ -1,20 +1,32 @@
-import sys
 import unittest
-import Website
+from Website import Website
+from HtmlIdentifier import HtmlIdentifier, IdentifierType
 
 
 class WebsiteTest(unittest.TestCase):
 
     def test_attributes(self):
-        website = Website.Website("testname", "testurl", False, True, "testnextPageHtmlFrag", "testlistItemHtmlFrag", "testdownloadHtmlFrag", "testlegalTextTitleHtmlFrag")
+        website = WebsiteTest.createWebsite("testname")
         self.assertEqual(website.name, "testname")
         self.assertEqual(website.url, "testurl")
         self.assertFalse(website.isUsingAjax)
         self.assertTrue(website.isMultiPage)
-        self.assertEqual(website.nextPageHtmlFrag, "testnextPageHtmlFrag")
-        self.assertEqual(website.listItemHtmlFrag, "testlistItemHtmlFrag")
-        self.assertEqual(website.downloadHtmlFrag, "testdownloadHtmlFrag")
-        self.assertEqual(website.legalTextTitleHtmlFrag, "testlegalTextTitleHtmlFrag")
+        self.assertEqual(website.getIdentifier(IdentifierType.NEXTPAGE).tag, "testtag")
+        self.assertEqual(website.getIdentifier(IdentifierType.NEXTPAGE).class_,"testclass")
+        self.assertEqual(website.getIdentifier(IdentifierType.LISTITEM).tag, "testtag")
+        self.assertEqual(website.getIdentifier(IdentifierType.LISTITEM).class_,"testclass")
+        self.assertEqual(website.getIdentifier(IdentifierType.DOWNLOADLINK).tag, "testtag")
+        self.assertEqual(website.getIdentifier(IdentifierType.DOWNLOADLINK).class_,"testclass")
+        self.assertEqual(website.getIdentifier(IdentifierType.LEGALTEXTTITLE).tag, "testtag")
+        self.assertEqual(website.getIdentifier(IdentifierType.LEGALTEXTTITLE).class_,"testclass")
+
+    @staticmethod
+    def createWebsite(name):
+        identifiers = [HtmlIdentifier("testtag", "testclass", IdentifierType.NEXTPAGE),
+                       HtmlIdentifier("testtag", "testclass", IdentifierType.DOWNLOADLINK),
+                       HtmlIdentifier("testtag", "testclass", IdentifierType.LISTITEM),
+                       HtmlIdentifier("testtag", "testclass", IdentifierType.LEGALTEXTTITLE)]
+        return Website(name, "testurl", False, True, identifiers)
 
     if __name__ == '__main__':
         unittest.main()

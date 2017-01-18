@@ -1,17 +1,17 @@
 import os
 import unittest
-from LegalText import LegalText
-from Website import Website
 from DatabaseAccess import DatabaseAccess
 from HtmlIdentifier import HtmlIdentifier, IdentifierType
+from Test.WebsiteTest import WebsiteTest
+from Test.LegalTextTest import LegalTextTest
 
 
 class DatabaseAccessTest(unittest.TestCase):
 
     def test_websiteExists(self):
-        dbAcces = self.createDbAccess()
-        website = self.createWebsite("testname")
-        text = self.createLegalText("testtitle", website)
+        dbAcces = DatabaseAccessTest.createDbAccess()
+        website = WebsiteTest.createWebsite("testname")
+        text = LegalTextTest.createLegalText("testtitle", website)
 
         self.assertFalse(dbAcces.websiteExists("testname"))
         dbAcces.addWebsite(website)
@@ -21,9 +21,9 @@ class DatabaseAccessTest(unittest.TestCase):
         os.remove("Test.db")
 
     def test_legalTextExists(self):
-        dbAcces = self.createDbAccess()
-        website = self.createWebsite("testname")
-        text = self.createLegalText("testtitle", website)
+        dbAcces = DatabaseAccessTest.createDbAccess()
+        website = WebsiteTest.createWebsite("testname")
+        text = LegalTextTest.createLegalText("testtitle", website)
 
         self.assertFalse(dbAcces.legalTextExists(text))
         dbAcces.addLegalText(text, website)
@@ -36,13 +36,14 @@ class DatabaseAccessTest(unittest.TestCase):
         os.remove("Test.db")
 
     def test_legalTextTitlesInDb(self):
-        dbAcces = self.createDbAccess()
-        website1 = self.createWebsite("testname1")
-        website2 = self.createWebsite("testname2")
-        text1 = self.createLegalText("testtitle1", website1)
-        text2 = self.createLegalText("testtitle2", website1)
-        text3 = self.createLegalText("testtitle3", website2)
-        text4 = self.createLegalText("testtitle4", website2)
+        dbAcces = DatabaseAccessTest.createDbAccess()
+        website1 = WebsiteTest.createWebsite("testname1")
+        website2 = WebsiteTest.createWebsite("testname2")
+        text1 = LegalTextTest.createLegalText("testtitle1", website1)
+        text2 = LegalTextTest.createLegalText("testtitle2", website1)
+        text3 = LegalTextTest.createLegalText("testtitle3", website2)
+        text4 = LegalTextTest.createLegalText("testtitle4", website2)
+
 
         self.assertEqual(len(dbAcces.legalTextTitlesInDb(website1)),0)
 
@@ -61,8 +62,8 @@ class DatabaseAccessTest(unittest.TestCase):
         os.remove("Test.db")
 
     def test_addWebsite(self):
-        dbAcces = self.createDbAccess()
-        website = self.createWebsite("testname")
+        dbAcces = DatabaseAccessTest.createDbAccess()
+        website = WebsiteTest.createWebsite("testname")
 
         self.assertTrue(dbAcces.addWebsite(website)) #Website erfolgreich einfügen
         self.assertFalse(dbAcces.addWebsite(website)) #Website bereits in Db
@@ -71,9 +72,9 @@ class DatabaseAccessTest(unittest.TestCase):
         os.remove("Test.db")
 
     def test_addLegalText(self):
-        dbAcces = self.createDbAccess()
-        website = self.createWebsite("testname")
-        text = self.createLegalText("testtitle", website)
+        dbAcces = DatabaseAccessTest.createDbAccess()
+        website = WebsiteTest.createWebsite("testname")
+        text = LegalTextTest.createLegalText("testtitle", website)
 
         self.assertFalse(dbAcces.addLegalText(text, website)) #Website existiert nicht
 
@@ -86,8 +87,8 @@ class DatabaseAccessTest(unittest.TestCase):
         os.remove("Test.db")
 
     def test_getWebsite(self):
-        dbAcces = self.createDbAccess()
-        website = self.createWebsite("testname")
+        dbAcces = DatabaseAccessTest.createDbAccess()
+        website = WebsiteTest.createWebsite("testname")
 
         self.assertEqual(dbAcces.getWebsite(website.name), None) #Website nicht in Db enthalten
         dbAcces.addWebsite(website)
@@ -114,13 +115,13 @@ class DatabaseAccessTest(unittest.TestCase):
         os.remove("Test.db")
 
     def test_getLegalTexts(self):
-        dbAcces = self.createDbAccess()
-        website1 = self.createWebsite("testname1")
-        website2 = self.createWebsite("testname2")
-        text1 = self.createLegalText("testtitle1", website1)
-        text2 = self.createLegalText("testtitle2", website1)
-        text3 = self.createLegalText("testtitle3", website2)
-        text4 = self.createLegalText("testtitle4", website2)
+        dbAcces = DatabaseAccessTest.createDbAccess()
+        website1 = WebsiteTest.createWebsite("testname1")
+        website2 = WebsiteTest.createWebsite("testname2")
+        text1 = LegalTextTest.createLegalText("testtitle1", website1)
+        text2 = LegalTextTest.createLegalText("testtitle2", website1)
+        text3 = LegalTextTest.createLegalText("testtitle3", website2)
+        text4 = LegalTextTest.createLegalText("testtitle4", website2)
 
         self.assertEqual(len(dbAcces.getLegalTexts(website1)), 0) #keine Texts in der Db
 
@@ -139,18 +140,10 @@ class DatabaseAccessTest(unittest.TestCase):
         dbAcces.close()
         os.remove("Test.db")
 
-    def createDbAccess(self):
+    @staticmethod
+    def createDbAccess():
         return DatabaseAccess("Test")
 
-    def createWebsite(self, name):
-        identifiers = [HtmlIdentifier("testtag", "testclass", IdentifierType.NEXTPAGE),
-                       HtmlIdentifier("testtag", "testclass", IdentifierType.DOWNLOADLINK),
-                       HtmlIdentifier("testtag", "testclass", IdentifierType.LISTITEM),
-                       HtmlIdentifier("testtag", "testclass", IdentifierType.LEGALTEXTTITLE)]
-        return Website(name, "testurl", False, True, identifiers)
-
-    def createLegalText(self, title, website):
-        return LegalText(title, "testtext", "testlocation", website)
 
     if __name__ == '__main__':
         unittest.main()
