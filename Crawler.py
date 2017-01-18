@@ -1,4 +1,3 @@
-import sys
 import DatabaseAccess
 import Website
 import LegalText
@@ -8,12 +7,17 @@ import urllib.request
 
 class Crawler:
 
-    def startcrawling(self, websites):
+    def scrapeWebsites(self, websites):
 
-        for site in websites:
+        for website in websites:
+            self.scrapeWebsite(website)
 
-            source = urllib.request.urlopen(site)
-            soup = bs.BeautifulSoup(source, "lxml")
 
-            for li in soup.find_all(site.listItemHtmlFrag, class_=):
+    def scrapeWebsite(self, website):
+
+        source = urllib.request.urlopen(website)
+        soup = bs.BeautifulSoup(source, "lxml")
+
+        #alle listItems durchlaufen
+        for li in soup.find_all(website.listItemIdentifier.tag, class_=website.listItemIdentifier.class_):
 

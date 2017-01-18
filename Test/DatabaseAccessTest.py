@@ -97,18 +97,18 @@ class DatabaseAccessTest(unittest.TestCase):
         self.assertEqual(websiteFromDb.url, website.url)
         self.assertEqual(websiteFromDb.isUsingAjax, website.isUsingAjax)
         self.assertEqual(websiteFromDb.isMultiPage, website.isMultiPage)
-        self.assertEqual(websiteFromDb.nextPageIdentifier.tag, website.nextPageIdentifier.tag)
-        self.assertEqual(websiteFromDb.nextPageIdentifier.class_, website.nextPageIdentifier.class_)
-        self.assertEqual(websiteFromDb.nextPageIdentifier.type, website.nextPageIdentifier.type)
-        self.assertEqual(websiteFromDb.listItemIdentifier.tag, website.listItemIdentifier.tag)
-        self.assertEqual(websiteFromDb.listItemIdentifier.class_, website.listItemIdentifier.class_)
-        self.assertEqual(websiteFromDb.listItemIdentifier.type, website.listItemIdentifier.type)
-        self.assertEqual(websiteFromDb.downloadLinkIdentifier.tag, website.downloadLinkIdentifier.tag)
-        self.assertEqual(websiteFromDb.downloadLinkIdentifier.class_, website.downloadLinkIdentifier.class_)
-        self.assertEqual(websiteFromDb.downloadLinkIdentifier.type, website.downloadLinkIdentifier.type)
-        self.assertEqual(websiteFromDb.legalTextTitleIdentifier.tag, website.legalTextTitleIdentifier.tag)
-        self.assertEqual(websiteFromDb.legalTextTitleIdentifier.class_, website.legalTextTitleIdentifier.class_)
-        self.assertEqual(websiteFromDb.legalTextTitleIdentifier.type, website.legalTextTitleIdentifier.type)
+
+        self.assertEqual(websiteFromDb.getIdentifier(IdentifierType.NEXTPAGE).tag, website.getIdentifier(IdentifierType.NEXTPAGE).tag)
+        self.assertEqual(websiteFromDb.getIdentifier(IdentifierType.NEXTPAGE).class_, website.getIdentifier(IdentifierType.NEXTPAGE).class_)
+        self.assertEqual(websiteFromDb.getIdentifier(IdentifierType.LISTITEM).tag, website.getIdentifier(IdentifierType.LISTITEM).tag)
+        self.assertEqual(websiteFromDb.getIdentifier(IdentifierType.LISTITEM).class_, website.getIdentifier(IdentifierType.LISTITEM).class_)
+        self.assertEqual(websiteFromDb.getIdentifier(IdentifierType.DOWNLOADLINK).tag, website.getIdentifier(IdentifierType.DOWNLOADLINK).tag)
+        self.assertEqual(websiteFromDb.getIdentifier(IdentifierType.DOWNLOADLINK).class_, website.getIdentifier(IdentifierType.DOWNLOADLINK).class_)
+        self.assertEqual(websiteFromDb.getIdentifier(IdentifierType.LEGALTEXTTITLE).tag, website.getIdentifier(IdentifierType.LEGALTEXTTITLE).tag)
+        self.assertEqual(websiteFromDb.getIdentifier(IdentifierType.LEGALTEXTTITLE).class_,
+                         website.getIdentifier(IdentifierType.LEGALTEXTTITLE).class_)
+
+
 
         dbAcces.close()
         os.remove("Test.db")
@@ -143,11 +143,11 @@ class DatabaseAccessTest(unittest.TestCase):
         return DatabaseAccess("Test")
 
     def createWebsite(self, name):
-        return Website(name, "testurl", False, True,
-                                  HtmlIdentifier("testtag", "testclass"),
-                                  HtmlIdentifier("testtag", "testclass"),
-                                  HtmlIdentifier("testtag", "testclass"),
-                                  HtmlIdentifier("testtag", "testclass"))
+        identifiers = [HtmlIdentifier("testtag", "testclass", IdentifierType.NEXTPAGE),
+                       HtmlIdentifier("testtag", "testclass", IdentifierType.DOWNLOADLINK),
+                       HtmlIdentifier("testtag", "testclass", IdentifierType.LISTITEM),
+                       HtmlIdentifier("testtag", "testclass", IdentifierType.LEGALTEXTTITLE)]
+        return Website(name, "testurl", False, True, identifiers)
 
     def createLegalText(self, title, website):
         return LegalText(title, "testtext", "testlocation", website)

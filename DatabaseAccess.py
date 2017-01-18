@@ -64,13 +64,9 @@ class DatabaseAccess:
         r = cursor.execute("SELECT Id FROM Website AS w WHERE w.name = ?", (website.name,)).fetchone()
         websiteId = int(r[0])
 
-        identifiersToInsert = (
-            (None, website.nextPageIdentifier.tag, website.nextPageIdentifier.class_, website.nextPageIdentifier.type.value, websiteId),
-            (None, website.listItemIdentifier.tag, website.listItemIdentifier.class_, website.listItemIdentifier.type.value,websiteId),
-            (None, website.downloadLinkIdentifier.tag, website.downloadLinkIdentifier.class_, website.downloadLinkIdentifier.type.value,websiteId),
-            (None, website.legalTextTitleIdentifier.tag, website.legalTextTitleIdentifier.class_, website.legalTextTitleIdentifier.type.value,websiteId))
-        for i in range(0,len(identifiersToInsert)):
-            cursor.execute("INSERT INTO HtmlIdentifier VALUES (?,?,?,?,?)", identifiersToInsert[i])
+        for identifier in website.identifiers:
+            cursor.execute("INSERT INTO HtmlIdentifier(tag, class, type, WebsiteId) VALUES (?,?,?,?)",
+                           (identifier.tag, identifier.class_, identifier.type.value, websiteId))
 
         return True
 
@@ -105,23 +101,15 @@ class DatabaseAccess:
         cursor.execute("SELECT Id, name, url, isUsingAjax, isMultiPage FROM Website WHERE name = ?", (name,))
         r1 = cursor.fetchone()
 
-        cursor.execute("SELECT tag, class, type FROM HtmlIdentifier WHERE WebsiteId = ? AND type = ?", (r1[0], IdentifierType.NEXTPAGE.value))
-        r2 = cursor.fetchone()
-        nextPageIdentifier = HtmlIdentifier(r2[0],r2[1],IdentifierType(r2[2]))
-        cursor.execute("SELECT tag, class, type FROM HtmlIdentifier WHERE WebsiteId = ? AND type = ?", (r1[0], IdentifierType.LISTITEM.value))
-        r2 = cursor.fetchone()
-        listItemIdentifier = HtmlIdentifier(r2[0], r2[1], IdentifierType(r2[2]))
-        cursor.execute("SELECT tag, class, type FROM HtmlIdentifier WHERE WebsiteId = ? AND type = ?", (r1[0], IdentifierType.DOWNLOADLINK.value))
-        r2 = cursor.fetchone()
-        downloadLinkIdentifier = HtmlIdentifier(r2[0], r2[1], IdentifierType(r2[2]))
-        cursor.execute("SELECT tag, class, type FROM HtmlIdentifier WHERE WebsiteId = ? AND type = ?", (r1[0], IdentifierType.LEGALTEXTTITLE.value))
-        r2 = cursor.fetchone()
-        legalTextTitleIdentifier = HtmlIdentifier(r2[0], r2[1], IdentifierType(r2[2]))
+        cursor.execute("SELECT tag, class, type FROM HtmlIdentifier WHERE WebsiteId = ?", (r1[0],))
+        r2 = cursor.fetchall()
+        identifiers = []
+        for r in r2:
+            identifiers.append(HtmlIdentifier(r[0], r[1], IdentifierType(r[2])))
 
-        website = Website(r1[1], r1[2], r1[3], r1[4], nextPageIdentifier, listItemIdentifier, downloadLinkIdentifier, legalTextTitleIdentifier)
+        website = Website(r1[1], r1[2], r1[3], r1[4], identifiers)
 
         return website
-
 
 
     def getLegalTexts(self, website):
