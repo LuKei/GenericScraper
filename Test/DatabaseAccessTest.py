@@ -108,6 +108,10 @@ class DatabaseAccessTest(unittest.TestCase):
         self.assertEqual(websiteFromDb.getIdentifier(IdentifierType.LEGALTEXTTITLE).tag, website.getIdentifier(IdentifierType.LEGALTEXTTITLE).tag)
         self.assertEqual(websiteFromDb.getIdentifier(IdentifierType.LEGALTEXTTITLE).class_,
                          website.getIdentifier(IdentifierType.LEGALTEXTTITLE).class_)
+        self.assertEqual(websiteFromDb.getIdentifier(IdentifierType.LEGALTEXTCONTENT).tag,
+                         website.getIdentifier(IdentifierType.LEGALTEXTCONTENT).tag)
+        self.assertEqual(websiteFromDb.getIdentifier(IdentifierType.LEGALTEXTCONTENT).class_,
+                         website.getIdentifier(IdentifierType.LEGALTEXTCONTENT).class_)
 
 
 

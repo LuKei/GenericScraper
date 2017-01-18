@@ -19,13 +19,16 @@ class WebsiteTest(unittest.TestCase):
         self.assertEqual(website.getIdentifier(IdentifierType.DOWNLOADLINK).class_,"testclass")
         self.assertEqual(website.getIdentifier(IdentifierType.LEGALTEXTTITLE).tag, "testtag")
         self.assertEqual(website.getIdentifier(IdentifierType.LEGALTEXTTITLE).class_,"testclass")
+        self.assertEqual(website.getIdentifier(IdentifierType.LEGALTEXTCONTENT).tag, "testtag")
+        self.assertEqual(website.getIdentifier(IdentifierType.LEGALTEXTCONTENT).class_, "testclass")
 
     @staticmethod
     def createWebsite(name):
         identifiers = [HtmlIdentifier("testtag", "testclass", IdentifierType.NEXTPAGE),
                        HtmlIdentifier("testtag", "testclass", IdentifierType.DOWNLOADLINK),
                        HtmlIdentifier("testtag", "testclass", IdentifierType.LISTITEM),
-                       HtmlIdentifier("testtag", "testclass", IdentifierType.LEGALTEXTTITLE)]
+                       HtmlIdentifier("testtag", "testclass", IdentifierType.LEGALTEXTTITLE),
+                       HtmlIdentifier("testtag", "testclass", IdentifierType.LEGALTEXTCONTENT)]
         return Website(name, "testurl", False, True, identifiers)
 
     if __name__ == '__main__':

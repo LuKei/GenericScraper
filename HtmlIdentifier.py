@@ -16,4 +16,5 @@ class IdentifierType(Enum):
     LISTITEM = 2
     DOWNLOADLINK = 3
     LEGALTEXTTITLE = 4
-    NONE = 5
+    LEGALTEXTCONTENT = 5
+    NONE = 6
