@@ -25,12 +25,12 @@ class DatabaseAccessTest(unittest.TestCase):
         website = WebsiteTest.createWebsite("testname")
         text = LegalTextTest.createLegalText("testtitle", website)
 
-        self.assertFalse(dbAcces.legalTextExists(text))
+        self.assertFalse(dbAcces.legalTextExists(text.title, website.name))
         dbAcces.addLegalText(text, website)
-        self.assertFalse(dbAcces.legalTextExists(text))
+        self.assertFalse(dbAcces.legalTextExists(text.title, website.name))
         dbAcces.addWebsite(website)
         dbAcces.addLegalText(text, website)
-        self.assertTrue(dbAcces.legalTextExists(text))
+        self.assertTrue(dbAcces.legalTextExists(text.title, website.name))
 
         dbAcces.close()
         os.remove("Test.db")

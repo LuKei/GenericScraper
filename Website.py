@@ -10,9 +10,9 @@ class Website:
         self.isMultiPage = isMultiPage
         self.identifiers = identifiers
 
-    def getIdentifier(self, type=IdentifierType.NONE):
+    def getIdentifier(self, type_=IdentifierType.NONE):
         for identifier in self.identifiers:
-            if identifier.type == type:
+            if identifier.type_ == type_:
                 return identifier
         return None
 

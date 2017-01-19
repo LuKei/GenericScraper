@@ -29,6 +29,9 @@ class WebsiteTest(unittest.TestCase):
                        HtmlIdentifier("testtag", "testclass", IdentifierType.LISTITEM),
                        HtmlIdentifier("testtag", "testclass", IdentifierType.LEGALTEXTTITLE),
                        HtmlIdentifier("testtag", "testclass", IdentifierType.LEGALTEXTCONTENT)]
+
+        identifiers[0].innerIdentifier = HtmlIdentifier("testtag", "testclass", IdentifierType.NEXTPAGE)
+
         return Website(name, "testurl", False, True, identifiers)
 
     if __name__ == '__main__':
