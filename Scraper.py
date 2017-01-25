@@ -1,6 +1,6 @@
 from sqlite3 import dbapi2
 
-from LegalText import LegalText
+from Document import Document
 from HtmlIdentifier import IdentifierType, HtmlIdentifier
 import bs4 as bs
 import urllib.request
@@ -15,24 +15,24 @@ class Scraper:
     def __init__(self, dbAccess):
         self.dbAccess = dbAccess
 
-    def scrapeWebsites(self, websites):
-        for website in websites:
-            self.scrapeWebsite(website)
+    def scrapeDatasources(self, datasources):
+        for datasource in datasources:
+            self.scrapeDatasource(datasource)
 
 
-    def scrapeWebsite(self, website):
+    def scrapeDatasource(self, datasource):
 
-        if not self.dbAccess.websiteExists(website.name):
-            self.dbAccess.addWebsite(website)
+        if not self.dbAccess.datasourceExists(datasource.name):
+            self.dbAccess.addDatasource(datasource)
 
 
-        listItemIdentifier = website.getIdentifier(IdentifierType.LISTITEM)
-        legalTextTitleIdentifier = website.getIdentifier(IdentifierType.LEGALTEXTTITLE)
-        legalTextContentIdentifier = website.getIdentifier(IdentifierType.LEGALTEXTCONTENT)
-        downloadLinkIdentifier = website.getIdentifier(IdentifierType.DOWNLOADLINK)
-        nextPageIdentifier = website.getIdentifier(IdentifierType.NEXTPAGE)
+        listItemIdentifier = datasource.getIdentifier(IdentifierType.LISTITEM)
+        legalTextTitleIdentifier = datasource.getIdentifier(IdentifierType.LEGALTEXTTITLE)
+        legalTextContentIdentifier = datasource.getIdentifier(IdentifierType.LEGALTEXTCONTENT)
+        downloadLinkIdentifier = datasource.getIdentifier(IdentifierType.DOWNLOADLINK)
+        nextPageIdentifier = datasource.getIdentifier(IdentifierType.NEXTPAGE)
 
-        source = urllib.request.urlopen(website.url)
+        source = urllib.request.urlopen(datasource.url)
         soup = bs.BeautifulSoup(source, "lxml")
 
         #TODO:
@@ -43,37 +43,39 @@ class Scraper:
         #TODO:
         #for li in Scraper.getInnerItems(soup, listItemIdentifier):
 
-            legalText = LegalText(None, None, None, website)
+            document = Document(None, None, datasource, None, None, None)
 
             if legalTextTitleIdentifier is None:
-                legalText.title = li.text.strip()
+                document.title = li.text.strip()
             else:
-                legalText.title = li.find(legalTextTitleIdentifier).strip()
+                document.title = li.find(legalTextTitleIdentifier).strip()
 
-            if self.dbAccess.legalTextExists(legalText.title, website.name):
+            if self.dbAccess.legalTextExists(document.title, datasource.name):
                 #Wenn Gesetzestext bereits in der Db: mit nächstem fortfahren
                 continue
 
             liLink = li.get("href")
-            liLink = Scraper.makeLinkAbsolute(liLink, website)
+            liLink = Scraper.makeLinkAbsolute(liLink, datasource)
 
             source2 = urllib.request.urlopen(liLink)
             soup2 = bs.BeautifulSoup(source2, "lxml")
 
             if downloadLinkIdentifier is None:
+                #TODO: als xml speichern
                 #Wenn kein downloadLinkIdentifier vorhanden => Text direk in Html => legalTextContentIdentifier nutzen
                 content = soup2.find(legalTextContentIdentifier.tag, class_=legalTextContentIdentifier.class_).text
-                legalText.text = content
+                #document.text = content
             else:
-                folderPath = website.name + "pdfs"
+                folderPath = datasource.name + "pdfs"
                 if not os.path.exists(folderPath):
                     # Ordner für .pdfs anlegen, falls noch nicht vorhanden
                     os.makedirs(folderPath)
 
                 downloadLink = soup2.find(downloadLinkIdentifier.tag, class_=downloadLinkIdentifier.class_).get("href")
-                downloadLink = Scraper.makeLinkAbsolute(downloadLink, website)
+                downloadLink = Scraper.makeLinkAbsolute(downloadLink, datasource)
+                document.url = downloadLink
 
-                pdfPath = folderPath + "/" + legalText.title + ".pdf"
+                pdfPath = folderPath + "/" + document.title + ".pdf"
                 if len(os.curdir) + len(pdfPath) > Scraper.maxPathLength:
                     #pdfPath kürzen, wenn gesamte Pfadlänge > 260
                     pdfPath = pdfPath[0:len(pdfPath)-4]
@@ -81,8 +83,10 @@ class Scraper:
 
                 urllib.request.urlretrieve(downloadLink, pdfPath)
 
-                legalText.location = pdfPath
-                self.dbAccess.addLegalText(legalText, website)
+                document.filepath = pdfPath
+                self.dbAccess.addLegalText(document, datasource)
+
+                #TODO: date des documents
 
             #TODO:
             #nextPageItem =soup.find(nextPageIdentifier.tag, class_=nextPageIdentifier.class_)

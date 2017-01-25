@@ -1,16 +1,14 @@
 import unittest
-from Website import Website
+from Datasource import Datasource
 from HtmlIdentifier import HtmlIdentifier, IdentifierType
 
 
-class WebsiteTest(unittest.TestCase):
+class DatasourceTest(unittest.TestCase):
 
     def test_attributes(self):
-        website = WebsiteTest.createWebsite("testname")
+        website = DatasourceTest.createDatasource("testname")
         self.assertEqual(website.name, "testname")
         self.assertEqual(website.url, "testurl")
-        self.assertFalse(website.isUsingAjax)
-        self.assertTrue(website.isMultiPage)
         self.assertEqual(website.getIdentifier(IdentifierType.NEXTPAGE).tag, "testtag")
         self.assertEqual(website.getIdentifier(IdentifierType.NEXTPAGE).class_,"testclass")
         self.assertEqual(website.getIdentifier(IdentifierType.LISTITEM).tag, "testtag")
@@ -23,7 +21,7 @@ class WebsiteTest(unittest.TestCase):
         self.assertEqual(website.getIdentifier(IdentifierType.LEGALTEXTCONTENT).class_, "testclass")
 
     @staticmethod
-    def createWebsite(name):
+    def createDatasource(name):
         identifiers = [HtmlIdentifier("testtag", "testclass", IdentifierType.NEXTPAGE),
                        HtmlIdentifier("testtag", "testclass", IdentifierType.DOWNLOADLINK),
                        HtmlIdentifier("testtag", "testclass", IdentifierType.LISTITEM),
@@ -32,7 +30,7 @@ class WebsiteTest(unittest.TestCase):
 
         identifiers[0].innerIdentifier = HtmlIdentifier("testtag", "testclass", IdentifierType.NEXTPAGE)
 
-        return Website(name, "testurl", False, True, identifiers)
+        return Datasource(name, "testurl", identifiers)
 
     if __name__ == '__main__':
         unittest.main()

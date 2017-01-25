@@ -1,6 +1,6 @@
 import unittest
 from Test.DatabaseAccessTest import DatabaseAccessTest
-from Website import Website
+from Datasource import Datasource
 from HtmlIdentifier import  HtmlIdentifier, IdentifierType
 from Scraper import Scraper
 
@@ -20,10 +20,10 @@ class ScraperTest(unittest.TestCase):
         identifiers = [HtmlIdentifier("a", "download", IdentifierType.DOWNLOADLINK),
                        HtmlIdentifier("a", "pbhandout", IdentifierType.LISTITEM)]
 
-        website = Website("Bundesministerium der Finanzen",
+        datasource = Datasource("Bundesministerium der Finanzen",
                           "http://www.bundesfinanzministerium.de/Web/DE/Service/"
                           "Publikationen/BMF_Schreiben/bmf_schreiben.html",
-                          isUsingAjax=False, isMultiPage=True, identifiers=identifiers)
+                            identifiers=identifiers)
 
         scraper = Scraper(dbAccess)
-        scraper.scrapeWebsite(website)
+        scraper.scrapeDatasource(datasource)
