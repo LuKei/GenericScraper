@@ -14,10 +14,20 @@ class HtmlIdentifier:
             innerIdentifier.type_ = self.type_
 
 
+    def addInnermostIdentifier(self, identifier):
+
+        identifier.type_ = self.type_
+
+        if self.innerIdentifier is None:
+            self.innerIdentifier = identifier
+        else:
+            self.innerIdentifier.addInnermostIdentifier(identifier)
+
+
 class IdentifierType(Enum):
     NEXTPAGE = 1
     LISTITEM = 2
     DOWNLOADLINK = 3
-    LEGALTEXTTITLE = 4
+    DOCUMENTTITLE = 4
     LEGALTEXTCONTENT = 5
     NONE = 6

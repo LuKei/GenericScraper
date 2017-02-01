@@ -16,12 +16,12 @@ class DatabaseAccess:
         cursor.execute("CREATE TABLE IF NOT EXISTS datasources_type(id INTEGER PRIMARY KEY, name TEXT NOT NULL)")
 
         cursor.execute("CREATE TABLE IF NOT EXISTS dokumente(id INTEGER PRIMARY KEY, datasource INTEGER NOT NULL, "
-                       "datasources_type INTEGER, url TEXT NOT NULL, title TEXT NOT NULL, date DATETIME NOT NULL,"
-                       "filepath TEXT NOT NULL, FOREIGN KEY (datasource) REFERENCES datasources(id),"
+                       "datasources_type INTEGER, url TEXT NOT NULL, title TEXT NOT NULL, date DATETIME,"
+                       "filepath TEXT, FOREIGN KEY (datasource) REFERENCES datasources(id),"
                        "FOREIGN KEY (datasources_type) REFERENCES datasources_type(id))")
 
         cursor.execute("CREATE  TABLE  IF NOT EXISTS html_identifier(id INTEGER PRIMARY KEY, tag TEXT NOT NULL, "
-                       "class TEXT NOT NULL, type INTEGER NOT NULL, datasource INTEGER NOT NULL, "
+                       "class TEXT, type INTEGER NOT NULL, datasource INTEGER NOT NULL, "
                        "innerIdentifier INTEGER, isTopIdentifier BOOLEAN,"
                        "FOREIGN KEY (datasource) REFERENCES datasources(id))")
 
@@ -96,20 +96,28 @@ class DatabaseAccess:
         #TODO: umbauen, sodass mehrere Texte gleichzeitig eingefügt werden können
         if self.documentExists(document.title, datasource.name):
             print("Ein Gesetzestext mit dem Titel " + document.title + " existert bereits.")
-            return False
+            return -1
 
         cursor = self.connection.cursor()
         r = cursor.execute("SELECT id FROM datasources AS ds WHERE ds.name = ?", (datasource.name,)).fetchone()
         if r is None:
             print("Eine Webseite mit diesem Namen existiert nicht. Fügen Sie den Gesetzestext einer exsitierenden "
                   "Webseite hinzu")
-            return False
+            return -1
 
         datasourceId = int(r[0])
 
         tupleToInsert = (None, datasourceId, document.datasourceType.value, document.url, document.title, document.date, document.filepath, )
         cursor.execute("INSERT INTO dokumente VALUES(?,?,?,?,?,?,?)", tupleToInsert)
-        return True
+        r = cursor.execute("SELECT last_insert_rowid()").fetchone()
+        documentId = int(r[0])
+        return documentId
+
+
+    def setDocumentFilePath(self, documentId, filePath):
+
+        cursor = self.connection.cursor()
+        cursor.execute("UPDATE dokumente SET filepath = ? WHERE id = ?", (documentId, filePath))
 
 
     def getDatasource(self, name):

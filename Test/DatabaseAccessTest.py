@@ -75,12 +75,12 @@ class DatabaseAccessTest(unittest.TestCase):
         website = DatasourceTest.createDatasource("testname")
         doc = DocumentTest.createDocument("testtitle", website)
 
-        self.assertFalse(dbAcces.addDocument(doc, website)) #Website existiert nicht
+        self.assertEqual(dbAcces.addDocument(doc, website), -1) #Website existiert nicht
 
         dbAcces.addDatasource(website)
 
-        self.assertTrue(dbAcces.addDocument(doc, website)) #Text erfolgreich einfügen
-        self.assertFalse(dbAcces.addDocument(doc, website)) #Text bereits in Db
+        self.assertGreater(dbAcces.addDocument(doc, website), 0) #Text erfolgreich einfügen
+        self.assertEqual(dbAcces.addDocument(doc, website), -1) #Text bereits in Db
 
         dbAcces.close()
         os.remove("Test.db")
@@ -96,19 +96,19 @@ class DatabaseAccessTest(unittest.TestCase):
         self.assertEqual(websiteFromDb.name, website.name)
         self.assertEqual(websiteFromDb.url, website.url)
 
-        self.assertEqual(websiteFromDb.getIdentifier(IdentifierType.NEXTPAGE).tag, website.getIdentifier(IdentifierType.NEXTPAGE).tag)
-        self.assertEqual(websiteFromDb.getIdentifier(IdentifierType.NEXTPAGE).class_, website.getIdentifier(IdentifierType.NEXTPAGE).class_)
-        self.assertEqual(websiteFromDb.getIdentifier(IdentifierType.LISTITEM).tag, website.getIdentifier(IdentifierType.LISTITEM).tag)
-        self.assertEqual(websiteFromDb.getIdentifier(IdentifierType.LISTITEM).class_, website.getIdentifier(IdentifierType.LISTITEM).class_)
-        self.assertEqual(websiteFromDb.getIdentifier(IdentifierType.DOWNLOADLINK).tag, website.getIdentifier(IdentifierType.DOWNLOADLINK).tag)
-        self.assertEqual(websiteFromDb.getIdentifier(IdentifierType.DOWNLOADLINK).class_, website.getIdentifier(IdentifierType.DOWNLOADLINK).class_)
-        self.assertEqual(websiteFromDb.getIdentifier(IdentifierType.LEGALTEXTTITLE).tag, website.getIdentifier(IdentifierType.LEGALTEXTTITLE).tag)
-        self.assertEqual(websiteFromDb.getIdentifier(IdentifierType.LEGALTEXTTITLE).class_,
-                         website.getIdentifier(IdentifierType.LEGALTEXTTITLE).class_)
-        self.assertEqual(websiteFromDb.getIdentifier(IdentifierType.LEGALTEXTCONTENT).tag,
-                         website.getIdentifier(IdentifierType.LEGALTEXTCONTENT).tag)
-        self.assertEqual(websiteFromDb.getIdentifier(IdentifierType.LEGALTEXTCONTENT).class_,
-                         website.getIdentifier(IdentifierType.LEGALTEXTCONTENT).class_)
+        self.assertEqual(websiteFromDb.getOutermostIdentifier(IdentifierType.NEXTPAGE).tag, website.getOutermostIdentifier(IdentifierType.NEXTPAGE).tag)
+        self.assertEqual(websiteFromDb.getOutermostIdentifier(IdentifierType.NEXTPAGE).class_, website.getOutermostIdentifier(IdentifierType.NEXTPAGE).class_)
+        self.assertEqual(websiteFromDb.getOutermostIdentifier(IdentifierType.LISTITEM).tag, website.getOutermostIdentifier(IdentifierType.LISTITEM).tag)
+        self.assertEqual(websiteFromDb.getOutermostIdentifier(IdentifierType.LISTITEM).class_, website.getOutermostIdentifier(IdentifierType.LISTITEM).class_)
+        self.assertEqual(websiteFromDb.getOutermostIdentifier(IdentifierType.DOWNLOADLINK).tag, website.getOutermostIdentifier(IdentifierType.DOWNLOADLINK).tag)
+        self.assertEqual(websiteFromDb.getOutermostIdentifier(IdentifierType.DOWNLOADLINK).class_, website.getOutermostIdentifier(IdentifierType.DOWNLOADLINK).class_)
+        self.assertEqual(websiteFromDb.getOutermostIdentifier(IdentifierType.DOCUMENTTITLE).tag, website.getOutermostIdentifier(IdentifierType.DOCUMENTTITLE).tag)
+        self.assertEqual(websiteFromDb.getOutermostIdentifier(IdentifierType.DOCUMENTTITLE).class_,
+                         website.getOutermostIdentifier(IdentifierType.DOCUMENTTITLE).class_)
+        self.assertEqual(websiteFromDb.getOutermostIdentifier(IdentifierType.LEGALTEXTCONTENT).tag,
+                         website.getOutermostIdentifier(IdentifierType.LEGALTEXTCONTENT).tag)
+        self.assertEqual(websiteFromDb.getOutermostIdentifier(IdentifierType.LEGALTEXTCONTENT).class_,
+                         website.getOutermostIdentifier(IdentifierType.LEGALTEXTCONTENT).class_)
 
 
 

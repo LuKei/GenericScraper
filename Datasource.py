@@ -9,7 +9,8 @@ class Datasource:
         self.url = url
         self.identifiers = identifiers
 
-    def getIdentifier(self, type_=IdentifierType.NONE):
+
+    def getOutermostIdentifier(self, type_=IdentifierType.NONE):
         for identifier in self.identifiers:
             if identifier.type_ == type_:
                 return identifier
