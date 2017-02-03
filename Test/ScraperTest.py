@@ -72,6 +72,10 @@ class ScraperTest(unittest.TestCase):
         documentTitleIdentifier = HtmlIdentifier("div", "container main-head", IdentifierType.DOCUMENTTITLE)
         documentTitleIdentifier.addInnermostIdentifier(HtmlIdentifier("div", "headline headline-main"))
         documentTitleIdentifier.addInnermostIdentifier(HtmlIdentifier("h1", "title"))
+
+        documentTitleIdentifier = HtmlIdentifier("div", "container main-head", IdentifierType.DOCUMENTSUBTITLE)
+        documentTitleIdentifier.addInnermostIdentifier(HtmlIdentifier("div", "headline headline-main"))
+        documentTitleIdentifier.addInnermostIdentifier(HtmlIdentifier("h1", "title"))
         documentTitleIdentifier.addInnermostIdentifier(HtmlIdentifier("span", "subtitle"))
 
         downloadLinkIdentifier = HtmlIdentifier("div", "content-block", IdentifierType.DOWNLOADLINK)

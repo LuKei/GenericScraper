@@ -28,67 +28,73 @@ class Scraper:
         documentContentIdentifier = datasource.getOutermostIdentifier(IdentifierType.LEGALTEXTCONTENT)
         downloadLinkIdentifier = datasource.getOutermostIdentifier(IdentifierType.DOWNLOADLINK)
         nextPageIdentifier = datasource.getOutermostIdentifier(IdentifierType.NEXTPAGE)
+        dateIdentifier = datasource.getOutermostIdentifier(IdentifierType.DATEIDENTIFIER)
 
         source = urllib.request.urlopen(datasource.url)
         soup = bs.BeautifulSoup(source, "lxml")
+
+        folderPath = "documents_" + datasource.name
+        if not os.path.exists(folderPath):
+            # Ordner für .pdfs anlegen, falls noch nicht vorhanden
+            os.makedirs(folderPath)
 
         while True:
 
             # alle listItems durchlaufen
             for li in self._getInnerItemsFromSoup(soup, listItemIdentifier):
 
-                #TODO: richtigen DatasourceType suchen
-                document = Document(None, None, datasource, DatasourceType.GESETZESTEXTE, None, None)
+                try:
 
-                if self.dbAccess.documentExists(document.title, datasource.name):
-                    #Wenn Gesetzestext bereits in der Db: mit nächstem fortfahren
-                    continue
+                    #TODO: richtigen DatasourceType suchen
+                    document = Document(None, None, datasource, DatasourceType.GESETZESTEXTE, None, None)
 
-                liLink = li.get("href")
-                source2 = Scraper.openLink(liLink, datasource)
-                soup2 = bs.BeautifulSoup(source2, "lxml")
+                    liLink = li.get("href")
+                    source2 = Scraper.openLink(liLink, datasource)
+                    soup2 = bs.BeautifulSoup(source2, "lxml")
 
-                if documentTitleIdentifier is None:
-                    document.title = li.text.strip()
-                else:
-                    document.title = self._getInnerItemsFromSoup(soup2, documentTitleIdentifier)[0].text
+                    if documentTitleIdentifier is None:
+                        document.title = li.text.strip()
+                    else:
+                        document.title = self._getInnerItemsFromSoup(soup2, documentTitleIdentifier)[0].text
 
-
-                if downloadLinkIdentifier is None:
-                    #TODO
-                    #als xml speichern
-                    content = self._getInnerItemsFromSoup(soup, documentContentIdentifier)[0].text
-                else:
-                    folderPath = "documents_" + datasource.name
-                    if not os.path.exists(folderPath):
-                        # Ordner für .pdfs anlegen, falls noch nicht vorhanden
-                        os.makedirs(folderPath)
-
-                    downloadLinkItems = self._getInnerItemsFromSoup(soup2, downloadLinkIdentifier)
-                    if len(downloadLinkItems) == 0:
-                        #TODO: mehrere DownloadLinks zulassen?
+                    if self.dbAccess.documentExists(document.title, datasource.name):
+                        #Wenn Gesetzestext bereits in der Db: mit nächstem fortfahren
                         continue
-                    downloadLink = downloadLinkItems[0].get("href")
-                    downloadResponse = Scraper.openLink(downloadLink, datasource)
-                    if downloadResponse is not None:
 
-                        document.url = downloadResponse.url
+                    if dateIdentifier is not None:
+                        dateItems = self._getInnerItemsFromSoup(soup2, dateIdentifier)
+                        document.date = dateItems[0].text
 
-                        documentId = self.dbAccess.addDocument(document, datasource)
+                    if downloadLinkIdentifier is None:
+                        #TODO
+                        #als xml speichern
+                        content = self._getInnerItemsFromSoup(soup, documentContentIdentifier)[0].text
+                    else:
+                        downloadLinkItems = self._getInnerItemsFromSoup(soup2, downloadLinkIdentifier)
 
-                        documentPath = folderPath + "/" + str(documentId) + ".pdf"
+                        if len(downloadLinkItems) == 0:
+                            #TODO: mehrere DownloadLinks zulassen?
+                            continue
 
-                        urllib.request.urlretrieve(downloadResponse.url, documentPath)
+                        downloadLink = downloadLinkItems[0].get("href")
+                        downloadResponse = Scraper.openLink(downloadLink, datasource)
+                        if downloadResponse is not None:
+                            document.url = downloadResponse.url
 
-                        document.filepath = documentPath
+                            documentId = self.dbAccess.addDocument(document, datasource)
 
-                        self.dbAccess.setDocumentFilePath(documentId, documentPath)
+                            documentPath = folderPath + "/" + str(documentId) + ".pdf"
 
+                            urllib.request.urlretrieve(downloadResponse.url, documentPath)
 
-                        #TODO: date des documents
+                            document.filepath = documentPath
 
-                        self.dbAccess.commit()
+                            self.dbAccess.setDocumentFilePath(documentId, documentPath)
 
+                            self.dbAccess.commit()
+
+                except:
+                    self.dbAccess.rollback()
 
             #TODO:
             nextPageItems = self._getInnerItemsFromSoup(soup, nextPageIdentifier)
