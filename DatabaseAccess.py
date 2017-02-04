@@ -37,10 +37,10 @@ class DatabaseAccess:
 
 
 
-    def documentExists(self, title, datsourceName):
+    def documentExists(self, title, datasourceName):
         cursor = self.connection.cursor()
         cursor.execute("SELECT doc.id FROM dokumente AS doc INNER JOIN datasources AS ds ON doc.datasource = ds.id "
-                       "WHERE doc.title = ? AND ds.name = ?", (title,datsourceName))
+                       "WHERE doc.title = ? AND ds.name = ?", (title,datasourceName))
         r = cursor.fetchone()
         if r is None:
             return False
@@ -107,7 +107,7 @@ class DatabaseAccess:
 
         datasourceId = int(r[0])
 
-        tupleToInsert = (None, datasourceId, document.datasourceType.value, document.url, document.title, document.date, document.filepath, )
+        tupleToInsert = (None, datasourceId, document.datasourceType.value, document.url, document.title, document.date, document.filepath)
         cursor.execute("INSERT INTO dokumente VALUES(?,?,?,?,?,?,?)", tupleToInsert)
         r = cursor.execute("SELECT last_insert_rowid()").fetchone()
         documentId = int(r[0])
@@ -117,7 +117,7 @@ class DatabaseAccess:
     def setDocumentFilePath(self, documentId, filePath):
 
         cursor = self.connection.cursor()
-        cursor.execute("UPDATE dokumente SET filepath = ? WHERE id = ?", (documentId, filePath))
+        cursor.execute("UPDATE dokumente SET filepath = ? WHERE id = ?", (filePath, documentId))
 
 
     def getDatasource(self, name):
@@ -161,6 +161,18 @@ class DatabaseAccess:
             self._appendInnerIdentifier(innerIdentifier,nextInnerIdentifierId)
 
 
+    def getDocument(self, title, datasource):
+        if not self.documentExists(title, datasource.name):
+            return None
+
+        cursor = self.connection.cursor()
+        cursor.execute("SELECT doc.title, doc.filepath, doc.datasources_type, doc.url, doc.date "
+                       "FROM dokumente AS doc INNER JOIN datasources AS ds ON doc.datasource = ds.id "
+                       "WHERE doc.title = ? AND ds.name = ?", (title, datasource.name))
+        r = cursor.fetchone()
+        return Document(r[0], r[1], datasource, r[2], r[3], r[4])
+
+
     def getDocuments(self, datasource):
         texts = []
 
@@ -175,6 +187,15 @@ class DatabaseAccess:
             texts.append(text)
 
         return texts
+
+
+    def removeDocument(self, title, datasource):
+        if not self.documentExists(title, datasource.name):
+            return
+
+        cursor = self.connection.cursor()
+        cursor.execute("DELETE FROM dokumente WHERE title = ? AND "
+                       "datasource = (SELECT id FROM datasources WHERE name = ?)", (title, datasource.name))
 
 
     def commit(self):

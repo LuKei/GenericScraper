@@ -22,9 +22,11 @@ class Scraper:
         if not self.dbAccess.datasourceExists(datasource.name):
             self.dbAccess.addDatasource(datasource)
 
+        self.dbAccess.commit()
 
         listItemIdentifier = datasource.getOutermostIdentifier(IdentifierType.LISTITEM)
-        documentTitleIdentifier = datasource.getOutermostIdentifier(IdentifierType.DOCUMENTTITLE)
+        titleIdentifier = datasource.getOutermostIdentifier(IdentifierType.DOCUMENTTITLE)
+        subTitleIdentifier = datasource.getOutermostIdentifier(IdentifierType.DOCUMENTSUBTITLE)
         documentContentIdentifier = datasource.getOutermostIdentifier(IdentifierType.LEGALTEXTCONTENT)
         downloadLinkIdentifier = datasource.getOutermostIdentifier(IdentifierType.DOWNLOADLINK)
         nextPageIdentifier = datasource.getOutermostIdentifier(IdentifierType.NEXTPAGE)
@@ -37,14 +39,16 @@ class Scraper:
         if not os.path.exists(folderPath):
             # Ordner für .pdfs anlegen, falls noch nicht vorhanden
             os.makedirs(folderPath)
-
+        i = 0
         while True:
 
             # alle listItems durchlaufen
             for li in self._getInnerItemsFromSoup(soup, listItemIdentifier):
 
-                try:
 
+                #try:
+                    i += 1
+                    print(i)
                     #TODO: richtigen DatasourceType suchen
                     document = Document(None, None, datasource, DatasourceType.GESETZESTEXTE, None, None)
 
@@ -52,18 +56,34 @@ class Scraper:
                     source2 = Scraper.openLink(liLink, datasource)
                     soup2 = bs.BeautifulSoup(source2, "lxml")
 
-                    if documentTitleIdentifier is None:
+                    if titleIdentifier is None:
                         document.title = li.text.strip()
                     else:
-                        document.title = self._getInnerItemsFromSoup(soup2, documentTitleIdentifier)[0].text
+                        document.title = self._getInnerItemsFromSoup(soup2, titleIdentifier)[0].text.strip()
 
-                    if self.dbAccess.documentExists(document.title, datasource.name):
-                        #Wenn Gesetzestext bereits in der Db: mit nächstem fortfahren
-                        continue
+                    if subTitleIdentifier is not None:
+                        subTitleItems = self._getInnerItemsFromSoup(soup2, subTitleIdentifier)
+                        if len(subTitleItems) > 0:
+                            document.title += subTitleItems[0].text.strip()
 
                     if dateIdentifier is not None:
                         dateItems = self._getInnerItemsFromSoup(soup2, dateIdentifier)
-                        document.date = dateItems[0].text
+                        if len(dateItems) > 0:
+                            document.date = dateItems[0].text
+
+                    if self.dbAccess.documentExists(document.title, datasource.name):
+                        #Wenn Gesetzestext bereits in der Db: neuere Version verwenden.
+                        #Wenn kein Datum gescraped werden kann -> überspringen
+                        if document.date is not None:
+                            documentInDb = self.dbAccess.getDocument(document.title, datasource)
+                            if documentInDb.date < document.date:
+                                self.dbAccess.removeDocument(documentInDb.title, datasource)
+                            else:
+                                continue
+                        else:
+                            continue
+
+
 
                     if downloadLinkIdentifier is None:
                         #TODO
@@ -93,15 +113,15 @@ class Scraper:
 
                             self.dbAccess.commit()
 
-                except:
-                    self.dbAccess.rollback()
+                #except:
+                    #self.dbAccess.rollback()
 
             #TODO:
-            nextPageItems = self._getInnerItemsFromSoup(soup, nextPageIdentifier)
-            if len(nextPageItems) == 0:
+            paginationItems = self._getInnerItemsFromSoup(soup, nextPageIdentifier)
+            if len(paginationItems) == 0:
                 break
             else:
-                nextPageLink = nextPageItems[0].get("href")
+                nextPageLink = paginationItems[len(paginationItems)-1].get("href")
                 source = Scraper.openLink(nextPageLink, datasource)
                 soup = bs.BeautifulSoup(source, "lxml")
 

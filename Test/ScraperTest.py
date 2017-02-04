@@ -14,13 +14,12 @@ class ScraperTest(unittest.TestCase):
 
 
         #Bundesministerium für Wirtschaft und Energie
-
         datasource2 = self.createBMWiDatasource()
 
-        datasources = [datasource1, datasource2]
+        datasources = [datasource2, datasource1]
         scraper = Scraper(dbAccess)
-        scraper.scrapeDatasource(datasource2)
-        #scraper.scrapeDatasources(datasources)
+        #scraper.scrapeDatasource(datasource2)
+        scraper.scrapeDatasources(datasources)
 
 
 
@@ -45,7 +44,15 @@ class ScraperTest(unittest.TestCase):
         downloadLinkIdentifier.addInnermostIdentifier(HtmlIdentifier("div", "publication-download-link"))
         downloadLinkIdentifier.addInnermostIdentifier(HtmlIdentifier("a", "download"))
 
-        identifiers = [nextPageIdentifier, listItemIdentifier, downloadLinkIdentifier]
+        dateIdentifier = HtmlIdentifier("div", "article-wrapper publication pbhandout no-image", IdentifierType.DATEIDENTIFIER)
+        dateIdentifier.addInnermostIdentifier(HtmlIdentifier("div", "article-content-wrapper"))
+        dateIdentifier.addInnermostIdentifier(HtmlIdentifier("div", "article-text-wrapper"))
+        dateIdentifier.addInnermostIdentifier(HtmlIdentifier("div", "article-text singleview"))
+        dateIdentifier.addInnermostIdentifier(HtmlIdentifier("ul", "doc-data publication"))
+        dateIdentifier.addInnermostIdentifier(HtmlIdentifier("li", ))
+        dateIdentifier.addInnermostIdentifier(HtmlIdentifier("span", "value"))
+
+        identifiers = [nextPageIdentifier, listItemIdentifier, downloadLinkIdentifier, dateIdentifier]
 
         datasource = Datasource("Bundesministerium der Finanzen",
                                 "http://www.bundesfinanzministerium.de/Web/DE/Service/"
@@ -69,14 +76,14 @@ class ScraperTest(unittest.TestCase):
         listItemIdentifier.addInnermostIdentifier(HtmlIdentifier("div", "card-block"))
         listItemIdentifier.addInnermostIdentifier(HtmlIdentifier("a", "card-link-overlay"))
 
-        documentTitleIdentifier = HtmlIdentifier("div", "container main-head", IdentifierType.DOCUMENTTITLE)
-        documentTitleIdentifier.addInnermostIdentifier(HtmlIdentifier("div", "headline headline-main"))
-        documentTitleIdentifier.addInnermostIdentifier(HtmlIdentifier("h1", "title"))
+        titleIdentifier = HtmlIdentifier("div", "container main-head", IdentifierType.DOCUMENTTITLE)
+        titleIdentifier.addInnermostIdentifier(HtmlIdentifier("div", "headline headline-main"))
+        titleIdentifier.addInnermostIdentifier(HtmlIdentifier("h1", "title"))
 
-        documentTitleIdentifier = HtmlIdentifier("div", "container main-head", IdentifierType.DOCUMENTSUBTITLE)
-        documentTitleIdentifier.addInnermostIdentifier(HtmlIdentifier("div", "headline headline-main"))
-        documentTitleIdentifier.addInnermostIdentifier(HtmlIdentifier("h1", "title"))
-        documentTitleIdentifier.addInnermostIdentifier(HtmlIdentifier("span", "subtitle"))
+        # subTitleIdentifier = HtmlIdentifier("div", "container main-head", IdentifierType.DOCUMENTSUBTITLE)
+        # subTitleIdentifier.addInnermostIdentifier(HtmlIdentifier("div", "headline headline-main"))
+        # subTitleIdentifier.addInnermostIdentifier(HtmlIdentifier("h1", "title"))
+        # subTitleIdentifier.addInnermostIdentifier(HtmlIdentifier("span", "subtitle"))
 
         downloadLinkIdentifier = HtmlIdentifier("div", "content-block", IdentifierType.DOWNLOADLINK)
         downloadLinkIdentifier.addInnermostIdentifier(HtmlIdentifier("div", "content"))
@@ -85,9 +92,14 @@ class ScraperTest(unittest.TestCase):
         downloadLinkIdentifier.addInnermostIdentifier(HtmlIdentifier("p"))
         downloadLinkIdentifier.addInnermostIdentifier(HtmlIdentifier("a", "link link-download"))
 
-        identifiers = [nextPageIdentifier, listItemIdentifier, documentTitleIdentifier, downloadLinkIdentifier]
+        dateIdentifier = HtmlIdentifier("div", "container main-head", IdentifierType.DATEIDENTIFIER)
+        dateIdentifier.addInnermostIdentifier(HtmlIdentifier("div", "headline headline-main"))
+        dateIdentifier.addInnermostIdentifier(HtmlIdentifier("p", "topline"))
+        dateIdentifier.addInnermostIdentifier(HtmlIdentifier("span", "date"))
 
-        datasource = Datasource("Bundesministerium für Wirtsschaft und Energie",
+        identifiers = [nextPageIdentifier, listItemIdentifier, titleIdentifier, downloadLinkIdentifier, dateIdentifier]
+
+        datasource = Datasource("Bundesministerium für Wirtschaft und Energie",
                                  "http://www.bmwi.de/Navigation/DE/Service/Gesetze-und-Verordnungen/"
                                  "gesetze-und-verordnungen.html",
                                 identifiers=identifiers)
