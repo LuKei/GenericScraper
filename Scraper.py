@@ -121,7 +121,11 @@ class Scraper:
             if len(paginationItems) == 0:
                 break
             else:
-                nextPageLink = paginationItems[len(paginationItems)-1].get("href")
+                nextPageLink = paginationItems[0].get("href")
+                if nextPageLink is None:
+                    nextPageLink = paginationItems[0].parent.get("href")
+                if nextPageLink is None:
+                    break
                 source = Scraper.openLink(nextPageLink, datasource)
                 soup = bs.BeautifulSoup(source, "lxml")
 

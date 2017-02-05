@@ -67,6 +67,7 @@ class ScraperTest(unittest.TestCase):
         nextPageIdentifier.addInnermostIdentifier(HtmlIdentifier("ul", "pagination"))
         nextPageIdentifier.addInnermostIdentifier(HtmlIdentifier("li", "pagination-item"))
         nextPageIdentifier.addInnermostIdentifier(HtmlIdentifier("a", "pagination-link"))
+        nextPageIdentifier.addInnermostIdentifier(HtmlIdentifier("span", "link-icon icon icon-arrow-right"))
 
         listItemIdentifier = HtmlIdentifier("div", "container container-search-results", IdentifierType.LISTITEM)
         listItemIdentifier.addInnermostIdentifier(HtmlIdentifier("div", "search-results"))
@@ -79,11 +80,6 @@ class ScraperTest(unittest.TestCase):
         titleIdentifier = HtmlIdentifier("div", "container main-head", IdentifierType.DOCUMENTTITLE)
         titleIdentifier.addInnermostIdentifier(HtmlIdentifier("div", "headline headline-main"))
         titleIdentifier.addInnermostIdentifier(HtmlIdentifier("h1", "title"))
-
-        # subTitleIdentifier = HtmlIdentifier("div", "container main-head", IdentifierType.DOCUMENTSUBTITLE)
-        # subTitleIdentifier.addInnermostIdentifier(HtmlIdentifier("div", "headline headline-main"))
-        # subTitleIdentifier.addInnermostIdentifier(HtmlIdentifier("h1", "title"))
-        # subTitleIdentifier.addInnermostIdentifier(HtmlIdentifier("span", "subtitle"))
 
         downloadLinkIdentifier = HtmlIdentifier("div", "content-block", IdentifierType.DOWNLOADLINK)
         downloadLinkIdentifier.addInnermostIdentifier(HtmlIdentifier("div", "content"))
