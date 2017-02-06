@@ -110,8 +110,6 @@ class DatabaseAccessTest(unittest.TestCase):
         self.assertEqual(websiteFromDb.getOutermostIdentifier(IdentifierType.LEGALTEXTCONTENT).class_,
                          website.getOutermostIdentifier(IdentifierType.LEGALTEXTCONTENT).class_)
 
-
-
         dbAcces.close()
         os.remove("Test.db")
 

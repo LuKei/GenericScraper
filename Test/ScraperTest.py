@@ -1,7 +1,7 @@
 import unittest
 from Test.DatabaseAccessTest import DatabaseAccessTest
 from Datasource import Datasource
-from HtmlIdentifier import  HtmlIdentifier, IdentifierType
+from HtmlIdentifier import  HtmlIdentifier, IdentifierType, HtmlAttribute
 from Scraper import Scraper
 
 class ScraperTest(unittest.TestCase):
@@ -9,18 +9,16 @@ class ScraperTest(unittest.TestCase):
     def test_scrapeWebsite(self):
         dbAccess = DatabaseAccessTest.createDbAccess()
 
-        #Bundesfinanzministerium
+
         datasource1 = self.createBundesfinanzministeriumDatasource()
-
-
-        #Bundesministerium für Wirtschaft und Energie
         datasource2 = self.createBMWiDatasource()
+        datasource3 = self.createBundesrechnungshofDatasource()
+        datasource4 = self.createEurLexDatasource()
 
-        datasources = [datasource2, datasource1]
+        datasources = [datasource1, datasource2, datasource3, datasource4]
         scraper = Scraper(dbAccess)
-        #scraper.scrapeDatasource(datasource2)
-        scraper.scrapeDatasources(datasources)
-
+        scraper.scrapeDatasource(datasource4)
+        #scraper.scrapeDatasources(datasources)
 
 
     def createBundesfinanzministeriumDatasource(self):
@@ -61,6 +59,7 @@ class ScraperTest(unittest.TestCase):
         return datasource
 
 
+    # Bundesministerium für Wirtschaft und Energie
     def createBMWiDatasource(self):
 
         nextPageIdentifier = HtmlIdentifier("div", "container", IdentifierType.NEXTPAGE)
@@ -101,3 +100,84 @@ class ScraperTest(unittest.TestCase):
                                 identifiers=identifiers)
         return datasource
 
+
+    def createBundesrechnungshofDatasource(self):
+
+        nextPageIdentifier = HtmlIdentifier("div", "listingBar", IdentifierType.NEXTPAGE)
+        nextPageIdentifier.addInnermostIdentifier(HtmlIdentifier("span", "next"))
+        nextPageIdentifier.addInnermostIdentifier(HtmlIdentifier("a"))
+
+        listItemIdentifier1 = HtmlIdentifier("table", "report-preview-items listing", IdentifierType.LISTITEM)
+        listItemIdentifier1.addInnermostIdentifier(HtmlIdentifier("tbody"))
+        listItemIdentifier1.addInnermostIdentifier(HtmlIdentifier("tr", "reportEntry"))
+        listItemIdentifier1.addInnermostIdentifier(HtmlIdentifier("td"))
+        listItemIdentifier1.addInnermostIdentifier(HtmlIdentifier("a"))
+
+        # listItemIdentifier2 = HtmlIdentifier("table", "report-preview-items listing", IdentifierType.LISTITEM)
+        # listItemIdentifier2.addInnermostIdentifier(HtmlIdentifier("tbody"))
+        # listItemIdentifier2.addInnermostIdentifier(HtmlIdentifier("tr", "reportEntry even"))
+        # listItemIdentifier2.addInnermostIdentifier(HtmlIdentifier("td"))
+        # listItemIdentifier2.addInnermostIdentifier(HtmlIdentifier("a"))
+
+        titleIdentifier = HtmlIdentifier("div", type_=IdentifierType.DOCUMENTTITLE)
+        titleIdentifier.addInnermostIdentifier(HtmlIdentifier("div"))
+        titleIdentifier.addInnermostIdentifier(HtmlIdentifier("h1", "documentFirstHeading"))
+
+        downloadLinkIdentifier = HtmlIdentifier("dl", "portlet portletDownloadPortlet", IdentifierType.DOWNLOADLINK)
+        downloadLinkIdentifier.addInnermostIdentifier(HtmlIdentifier("dd", "portletItem"))
+        downloadLinkIdentifier.addInnermostIdentifier(HtmlIdentifier("ul", "listTypeSquare"))
+        downloadLinkIdentifier.addInnermostIdentifier(HtmlIdentifier("li"))
+        downloadLinkIdentifier.addInnermostIdentifier(HtmlIdentifier("a"))
+
+        #dateIdentifier = HtmlIdentifier("", "", IdentifierType.DATEIDENTIFIER)
+
+        identifiers = [nextPageIdentifier, listItemIdentifier1,
+                       titleIdentifier, downloadLinkIdentifier]
+
+        datasource = Datasource("Bundesrechnungshof",
+                                "https://www.bundesrechnungshof.de/de/veroeffentlichungen/"
+                                "datenbank-veroeffentlichungen#b_start=0",
+                                identifiers=identifiers)
+        return datasource
+
+
+    def createEurLexDatasource(self):
+
+        nextPageIdentifier = HtmlIdentifier("div", "headerResult", IdentifierType.NEXTPAGE)
+        nextPageIdentifier.addInnermostIdentifier(HtmlIdentifier("form", additionalAttributes=[HtmlAttribute("id", "pagingForm")]))
+        nextPageIdentifier.addInnermostIdentifier(HtmlIdentifier("p", "pagination"))
+        nextPageIdentifier.addInnermostIdentifier(HtmlIdentifier("a"))
+        nextPageIdentifier.addInnermostIdentifier(HtmlIdentifier("img", additionalAttributes=[HtmlAttribute("alt", "Next")]))
+
+        listItemIdentifier = HtmlIdentifier("table", "documentTable", IdentifierType.LISTITEM)
+        listItemIdentifier.addInnermostIdentifier(HtmlIdentifier("tbody"))
+        listItemIdentifier.addInnermostIdentifier(HtmlIdentifier("tr"))
+        listItemIdentifier.addInnermostIdentifier(HtmlIdentifier("td", "publicationTitle"))
+        listItemIdentifier.addInnermostIdentifier(HtmlIdentifier("h3"))
+        listItemIdentifier.addInnermostIdentifier(HtmlIdentifier("a", "title"))
+
+        downloadLinkIdentifier = HtmlIdentifier("div", "tabContent", IdentifierType.DOWNLOADLINK)
+        downloadLinkIdentifier.addInnermostIdentifier(HtmlIdentifier("table", additionalAttributes=[HtmlAttribute("id", "availableFormat")]))
+        downloadLinkIdentifier.addInnermostIdentifier(HtmlIdentifier("tbody"))
+        downloadLinkIdentifier.addInnermostIdentifier(HtmlIdentifier("tr"))
+        downloadLinkIdentifier.addInnermostIdentifier(HtmlIdentifier("td"))
+        downloadLinkIdentifier.addInnermostIdentifier(HtmlIdentifier("a", additionalAttributes=[HtmlAttribute("id", "format_language_table_PDF_DE")]))
+
+        dateIdentifier = HtmlIdentifier("div", "box", IdentifierType.DATEIDENTIFIER)
+        dateIdentifier.addInnermostIdentifier(HtmlIdentifier("div", additionalAttributes=[HtmlAttribute("id", "text")]))
+        dateIdentifier.addInnermostIdentifier(HtmlIdentifier("div", additionalAttributes=[HtmlAttribute("id", "textTabContent")]))
+        dateIdentifier.addInnermostIdentifier(HtmlIdentifier("div", "tabContent"))
+        dateIdentifier.addInnermostIdentifier(HtmlIdentifier("div"))
+        dateIdentifier.addInnermostIdentifier(HtmlIdentifier("table"))
+        dateIdentifier.addInnermostIdentifier(HtmlIdentifier("tbody"))
+        dateIdentifier.addInnermostIdentifier(HtmlIdentifier("tr"))
+        dateIdentifier.addInnermostIdentifier(HtmlIdentifier("td"))
+        dateIdentifier.addInnermostIdentifier(HtmlIdentifier("p", "hd-date"))
+
+        identifiers = [nextPageIdentifier, listItemIdentifier, downloadLinkIdentifier, dateIdentifier]
+
+        datasource = Datasource("EUR-Lex",
+                                "http://eur-lex.europa.eu/search.html?qid=1486377338433&CASE_LAW_SUMMARY=false&DTS_"
+                                "DOM=EU_LAW&type=advanced&DTS_SUBDOM=EU_CASE_LAW",
+                                identifiers=identifiers)
+        return datasource

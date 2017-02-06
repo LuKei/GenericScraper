@@ -1,8 +1,7 @@
 import sqlite3
 from Datasource import Datasource
 from Document import Document
-from HtmlIdentifier import IdentifierType
-from HtmlIdentifier import HtmlIdentifier
+from HtmlIdentifier import HtmlIdentifier, IdentifierType, HtmlAttribute
 
 class DatabaseAccess:
 
@@ -24,6 +23,9 @@ class DatabaseAccess:
                        "class TEXT, type INTEGER NOT NULL, datasource INTEGER NOT NULL, "
                        "innerIdentifier INTEGER, isTopIdentifier BOOLEAN,"
                        "FOREIGN KEY (datasource) REFERENCES datasources(id))")
+
+        cursor.execute("CREATE TABLE IF NOT EXISTS html_attribute(id INTEGER PRIMARY KEY, name TEXT NOT NULL, value TEXT NOT NULL,"
+                       "html_identifier INTEGER NOT NULL, FOREIGN KEY (html_identifier) REFERENCES html_identifier(id))")
 
 
 
@@ -83,6 +85,9 @@ class DatabaseAccess:
                            (identifier.tag, identifier.class_, identifier.type_.value, datasourceId, None, isTopIdentifier))
             r = cursor.execute("SELECT last_insert_rowid()").fetchone()
             identifierId = int(r[0])
+
+            self._addHtmlAttributes(identifier.additionalAttributes, identifierId)
+
             return identifierId
         else:
             cursor.execute("INSERT INTO html_identifier(tag, class, type, datasource, innerIdentifier, isTopIdentifier) "
@@ -91,6 +96,21 @@ class DatabaseAccess:
                             self._addInnerIdentifier(datasourceId, identifier.innerIdentifier, isTopIdentifier=False),
                             isTopIdentifier))
 
+            r = cursor.execute("SELECT last_insert_rowid()").fetchone()
+            identifierId = int(r[0])
+
+            self._addHtmlAttributes(identifier.additionalAttributes, identifierId)
+
+            return identifierId
+
+
+    def _addHtmlAttributes(self, attributes, identifierId):
+        cursor = self.connection.cursor()
+
+        if attributes is not None:
+            for attribute in attributes:
+                cursor.execute("INSERT INTO html_attribute(name, value, html_identifier) VALUES (?,?,?)",
+                               (attribute.name, attribute.value, identifierId))
 
     def addDocument(self, document, datasource):
         #TODO: umbauen, sodass mehrere Texte gleichzeitig eingefügt werden können
@@ -127,18 +147,19 @@ class DatabaseAccess:
 
         cursor = self.connection.cursor()
         cursor.execute("SELECT id, name, url FROM datasources WHERE name = ?", (name,))
-        r1 = cursor.fetchone()
+        datasourceRow = cursor.fetchone()
 
         cursor.execute("SELECT tag, class, type, innerIdentifier, isTopIdentifier FROM html_identifier "
-                       "WHERE datasource = ? AND isTopIdentifier = 1", (r1[0],))
-        r2 = cursor.fetchall()
+                       "WHERE datasource = ? AND isTopIdentifier = 1", (datasourceRow[0],))
+        identifierRows = cursor.fetchall()
         identifiers = []
-        for r in r2:
-            identifier = HtmlIdentifier(r[0], r[1], IdentifierType(r[2]))
-            self._appendInnerIdentifier(identifier, innerIdentifierId=r[3])
+        for identifierRow in identifierRows:
+            identifier = HtmlIdentifier(identifierRow[0], identifierRow[1], IdentifierType(identifierRow[2]))
+            identifier.additionalAttributes = self._getHtmlAttributes(identifierId=identifierRow[3])
+            self._appendInnerIdentifier(identifier, innerIdentifierId=identifierRow[3])
             identifiers.append(identifier)
 
-        datasource = Datasource(r1[1], r1[2], identifiers)
+        datasource = Datasource(datasourceRow[1], datasourceRow[2], identifiers)
 
         return datasource
 
@@ -154,12 +175,26 @@ class DatabaseAccess:
 
         nextInnerIdentifierId = r[3]
         innerIdentifier = HtmlIdentifier(r[0], r[1], IdentifierType(r[2]))
+        innerIdentifier.additionalAttributes = self._getHtmlAttributes(identifierId=innerIdentifierId)
         identifier.InnerIdentifier = innerIdentifier
         if innerIdentifierId is None:
             return
         else:
             self._appendInnerIdentifier(innerIdentifier,nextInnerIdentifierId)
 
+
+    def _getHtmlAttributes(self, identifierId):
+        cursor = self.connection.cursor()
+
+        attributes = []
+
+        cursor.execute("SELECT name, value FROM html_attribute WHERE html_identifier = ?", (identifierId,))
+        attributeRows = cursor.fetchall()
+
+        for attributeRow in attributeRows:
+            attributes.append(HtmlAttribute(attributeRow[0], attributeRow[1]))
+
+        return attributes
 
     def getDocument(self, title, datasource):
         if not self.documentExists(title, datasource.name):

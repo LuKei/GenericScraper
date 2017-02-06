@@ -1,6 +1,6 @@
 import unittest
 from Datasource import Datasource
-from HtmlIdentifier import HtmlIdentifier, IdentifierType
+from HtmlIdentifier import HtmlIdentifier, IdentifierType, HtmlAttribute
 
 
 class DatasourceTest(unittest.TestCase):
@@ -11,6 +11,8 @@ class DatasourceTest(unittest.TestCase):
         self.assertEqual(website.url, "testurl")
         self.assertEqual(website.getOutermostIdentifier(IdentifierType.NEXTPAGE).tag, "testtag")
         self.assertEqual(website.getOutermostIdentifier(IdentifierType.NEXTPAGE).class_, "testclass")
+        self.assertEqual(website.getOutermostIdentifier(IdentifierType.NEXTPAGE).innerIdentifier.additionalAttributes[0].name, "testname")
+        self.assertEqual(website.getOutermostIdentifier(IdentifierType.NEXTPAGE).innerIdentifier.additionalAttributes[0].value, "testvalue")
         self.assertEqual(website.getOutermostIdentifier(IdentifierType.LISTITEM).tag, "testtag")
         self.assertEqual(website.getOutermostIdentifier(IdentifierType.LISTITEM).class_, "testclass")
         self.assertEqual(website.getOutermostIdentifier(IdentifierType.DOWNLOADLINK).tag, "testtag")
@@ -28,7 +30,7 @@ class DatasourceTest(unittest.TestCase):
                        HtmlIdentifier("testtag", "testclass", IdentifierType.DOCUMENTTITLE),
                        HtmlIdentifier("testtag", "testclass", IdentifierType.LEGALTEXTCONTENT)]
 
-        identifiers[0].innerIdentifier = HtmlIdentifier("testtag", "testclass", IdentifierType.NEXTPAGE)
+        identifiers[0].addInnermostIdentifier(HtmlIdentifier("testtag1", "testclass1", IdentifierType.NEXTPAGE, [HtmlAttribute("testname", "testvalue")]))
 
         return Datasource(name, "testurl", identifiers)
 

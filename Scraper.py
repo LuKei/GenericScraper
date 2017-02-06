@@ -53,6 +53,7 @@ class Scraper:
                     document = Document(None, None, datasource, DatasourceType.GESETZESTEXTE, None, None)
 
                     liLink = li.get("href")
+
                     source2 = Scraper.openLink(liLink, datasource)
                     soup2 = bs.BeautifulSoup(source2, "lxml")
 
@@ -144,9 +145,10 @@ class Scraper:
             slashIndex = re.search(r"[^/]/[^/]", datasource.url).start() + 1
             motherUrl = datasource.url[0:slashIndex]
 
-            if link[0] != "/":
-                link = "/" + link
-            link = motherUrl + link
+            #Sonder- und Trennzeichen am Anfang des Links entfernen
+            link = re.sub(r"\A(\/|\.)*", "", link)
+
+            link = motherUrl + "/" + link
             try:
                 #Wenn Link immer noch nicht geöffnet werden kann -> Fehler
                 response = urllib.request.urlopen(link)
@@ -158,10 +160,9 @@ class Scraper:
 
     def _getInnerItemsFromSoup(self, soup, topIdentifier):
 
-        #items = soup.find_all(topIdentifier.tag, class_=topIdentifier.class_)
         items = []
         if topIdentifier.class_ is None:
-            items += soup.find_all(topIdentifier.tag)
+            items += soup.find_all(topIdentifier.tag, attrs=topIdentifier.getAdditionalAttributesDict())
         else:
             classes = topIdentifier.class_.split(" ")
             cssSelector = topIdentifier.tag
@@ -180,7 +181,7 @@ class Scraper:
         innerItems = []
         for item in items:
             if identifier.class_ is None:
-                innerItems += item.find_all(identifier.tag)
+                innerItems += item.find_all(identifier.tag, attrs=identifier.getAdditionalAttributesDict())
             else:
                 classes = identifier.class_.split(" ")
                 cssSelector = identifier.tag
