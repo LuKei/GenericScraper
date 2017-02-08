@@ -13,13 +13,16 @@ class ScraperTest(unittest.TestCase):
         datasource1 = self.createBundesfinanzministeriumDatasource()
         datasource2 = self.createBMWiDatasource()
         datasource3 = self.createLegislationGovDatasource()
-        datasource4 = self.createEurLexDatasource()
-        datasource5 = self.createBundesrechnungshofDatasource()
+        datasource4 = self.createBundesrechnungshofDatasource()
+        datasource5 = self.createEurLexDatasource()
+        datasource6 = self.createCuriaDatasource()
+        datasource7 = self.createBundesfinanzhofDatasource()
 
-        datasources = [datasource1, datasource2, datasource3, datasource4]
+
+        datasources = [datasource1, datasource2, datasource3, datasource4, datasource5]
         scraper = Scraper(dbAccess)
-        scraper.scrapeDatasource(datasource5)
-        #scraper.scrapeDatasources(datasources)
+        #scraper.scrapeDatasource(datasource6)
+        scraper.scrapeDatasources(datasources)
 
 
     def createBundesfinanzministeriumDatasource(self):
@@ -58,7 +61,6 @@ class ScraperTest(unittest.TestCase):
                                 "Publikationen/BMF_Schreiben/bmf_schreiben.html",
                                 identifiers=identifiers)
         return datasource
-
 
     # Bundesministerium für Wirtschaft und Energie
     def createBMWiDatasource(self):
@@ -181,6 +183,7 @@ class ScraperTest(unittest.TestCase):
                                 identifiers=identifiers)
         return datasource
 
+
     def createLegislationGovDatasource(self):
 
         nextPageIdentifier = HtmlIdentifier("div", "contentFooter", IdentifierType.NEXTPAGE)
@@ -211,4 +214,71 @@ class ScraperTest(unittest.TestCase):
         datasource = Datasource("legislation.gov",
                                 "http://www.legislation.gov.uk/2012-*",
                                 identifiers=identifiers)
+        return datasource
+
+
+    def createCuriaDatasource(self):
+        nextPageIdentifier = HtmlIdentifier("div", "pagination", IdentifierType.NEXTPAGE)
+        nextPageIdentifier.addInnermostIdentifier(HtmlIdentifier("a"))
+        nextPageIdentifier.addInnermostIdentifier(HtmlIdentifier("img", additionalAttributes=[HtmlAttribute("title", "Letztes Dokument anzeigen")]))
+
+        listItemIdentifier = HtmlIdentifier("table", "detail_table_douments", IdentifierType.LISTITEM)
+        listItemIdentifier.addInnermostIdentifier(HtmlIdentifier("tbody"))
+        listItemIdentifier.addInnermostIdentifier(HtmlIdentifier("tr", "table_document_ligne"))
+        listItemIdentifier.addInnermostIdentifier(HtmlIdentifier("td", "table_cell_links_eurlex"))
+        listItemIdentifier.addInnermostIdentifier(HtmlIdentifier("table"))
+        listItemIdentifier.addInnermostIdentifier(HtmlIdentifier("tbody"))
+        listItemIdentifier.addInnermostIdentifier(HtmlIdentifier("tr"))
+        listItemIdentifier.addInnermostIdentifier(HtmlIdentifier("td"))
+        listItemIdentifier.addInnermostIdentifier(HtmlIdentifier("div", additionalAttributes=[HtmlAttribute("id", "docHtml")]))
+        listItemIdentifier.addInnermostIdentifier(HtmlIdentifier("a"))
+
+        downloadLinkIdentifier = HtmlIdentifier("", "", IdentifierType.DOWNLOADLINK)
+
+        dateIdentifier = HtmlIdentifier("", "", IdentifierType.DATEIDENTIFIER)
+
+        identifiers = [nextPageIdentifier, listItemIdentifier, downloadLinkIdentifier, dateIdentifier]
+
+        datasource = Datasource("Bundesministerium der Finanzen",
+                                "http://www.bundesfinanzministerium.de/Web/DE/Service/"
+                                "Publikationen/BMF_Schreiben/bmf_schreiben.html",
+                                identifiers=identifiers)
+        return datasource
+
+
+    def createBundesfinanzhofDatasource(self):
+
+        nextPageIdentifier = HtmlIdentifier("form", type_=IdentifierType.NEXTPAGE, additionalAttributes=[HtmlAttribute("name", "list")])
+        nextPageIdentifier.addInnermostIdentifier(HtmlIdentifier("table"))
+        nextPageIdentifier.addInnermostIdentifier(HtmlIdentifier("thead"))
+        nextPageIdentifier.addInnermostIdentifier(HtmlIdentifier("tr", "kopfzeile"))
+        nextPageIdentifier.addInnermostIdentifier(HtmlIdentifier("td", "ETitelKopf"))
+        nextPageIdentifier.addInnermostIdentifier(HtmlIdentifier("table"))
+        nextPageIdentifier.addInnermostIdentifier(HtmlIdentifier("tbody"))
+        nextPageIdentifier.addInnermostIdentifier(HtmlIdentifier("tr"))
+        nextPageIdentifier.addInnermostIdentifier(HtmlIdentifier("td", "pagenumber"))
+        nextPageIdentifier.addInnermostIdentifier(HtmlIdentifier("a"))
+        nextPageIdentifier.addInnermostIdentifier(HtmlIdentifier("a"))
+        nextPageIdentifier.addInnermostIdentifier(HtmlIdentifier("img", additionalAttributes=[HtmlAttribute("title", "nächste Seite")]))
+
+        listItemIdentifier = HtmlIdentifier("form", type_=IdentifierType.LISTITEM, additionalAttributes=[HtmlAttribute("name", "list")])
+        listItemIdentifier.addInnermostIdentifier(HtmlIdentifier("table"))
+        listItemIdentifier.addInnermostIdentifier(HtmlIdentifier("tbody"))
+        listItemIdentifier.addInnermostIdentifier(HtmlIdentifier("tr"))
+        listItemIdentifier.addInnermostIdentifier(HtmlIdentifier("td", "EAz"))
+        listItemIdentifier.addInnermostIdentifier(HtmlIdentifier("a", "doklink"))
+
+        titleIdentifier = HtmlIdentifier("p", "ueberchrift",type_=IdentifierType.DOCUMENTTITLE)
+
+        downloadLinkIdentifier = HtmlIdentifier("p", "printlink", IdentifierType.DOWNLOADLINK)
+        downloadLinkIdentifier.addInnermostIdentifier(HtmlIdentifier("a"))
+
+        ajaxWaitIdentifier = HtmlIdentifier("input", type_=IdentifierType.AJAXWAIT, additionalAttributes=[HtmlAttribute("type", "submit")])
+
+        identifiers = [nextPageIdentifier, listItemIdentifier, titleIdentifier,
+                       downloadLinkIdentifier, ajaxWaitIdentifier]
+
+        datasource = Datasource("Bundesfinanzhof",
+                                "https://www.bundesfinanzhof.de/entscheidungen/entscheidungen-online",
+                                identifiers=identifiers, isUsingAjax=True)
         return datasource

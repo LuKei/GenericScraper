@@ -23,6 +23,14 @@ class Scraper:
 
     def scrapeDatasource(self, datasource):
 
+        #variables for logging
+        scrapedDocuments = 0
+        sameName = 0
+        noDownloadlink = 0
+
+
+
+
         if not self.dbAccess.datasourceExists(datasource.name):
             self.dbAccess.addDatasource(datasource)
 
@@ -60,7 +68,12 @@ class Scraper:
                 xpathWaitString = xpathWaitString[0:len(xpathWaitString)-5]
             xpathWaitString += "]"
 
-            WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, xpathWaitString)))
+            if ajaxWaitIdentifier.class_ is None and ajaxWaitIdentifier.additionalAttributes is None:
+                xpathWaitString = xpathWaitString[0:len(xpathWaitString)-2]
+
+
+            WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.XPATH, xpathWaitString)))
+
             source = driver.page_source
 
         else:
@@ -68,8 +81,10 @@ class Scraper:
 
         soup = bs.BeautifulSoup(source, "lxml")
 
-        i = 0
+
         while True:
+
+            i = 0
 
             # alle ListItems durchlaufen
             for li in self._getInnerItemsFromSoup(soup, listItemIdentifier):
@@ -114,8 +129,10 @@ class Scraper:
                             self.dbAccess.removeDocument(documentInDb.title, datasource)
                         else:
                             continue
+                            sameDocument += 1
                     else:
                         continue
+                        sameDocument += 1
 
                 if downloadLinkIdentifier is None:
                     # TODO
@@ -127,6 +144,7 @@ class Scraper:
                     if len(downloadLinkItems) == 0:
                         # TODO: mehrere DownloadLinks zulassen?
                         continue
+                        noDownloadlink += 1
 
                     downloadLink = downloadLinkItems[0].get("href")
                     downloadResponse = Scraper.openLinkNonAjax(downloadLink, datasource)
@@ -145,8 +163,8 @@ class Scraper:
 
                         self.dbAccess.commit()
 
-                        # except:
-                        # self.dbAccess.rollback()
+                scrapedDocuments += 1
+
 
             paginationItems = self._getInnerItemsFromSoup(soup, nextPageIdentifier)
             if len(paginationItems) == 0:
@@ -166,6 +184,10 @@ class Scraper:
         if driver is not None:
             driver.close()
 
+        print("Wesbeite: " + datasource.name)
+        print("Erfasste Dokumente: " + scrapedDocuments)
+        print("Übersprungen wegen selben Namens: " + sameName)
+        print("Übersprungen, weil kein Download-Link gefunden wurde:" + noDownloadlink)
 
 
     @staticmethod

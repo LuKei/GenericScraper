@@ -23,15 +23,6 @@ class HtmlIdentifier:
             self.innerIdentifier.addInnermostIdentifier(identifier)
 
 
-    # def getAdditionalAttributesDict(self):
-    #     dic = {}
-    #
-    #     if self.additionalAttributes is not None:
-    #         for attribute in self.additionalAttributes:
-    #             dic[attribute.name] = attribute.value
-    #
-    #     return dic
-
 
 class HtmlAttribute:
 
