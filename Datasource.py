@@ -4,10 +4,11 @@ from enum import Enum
 
 class Datasource:
 
-    def __init__(self, name, url, identifiers):
+    def __init__(self, name, url, identifiers, isUsingAjax = False):
         self.name = name
         self.url = url
         self.identifiers = identifiers
+        self.isUsingAjax = isUsingAjax
 
 
     def getOutermostIdentifier(self, type_=IdentifierType.NONE):

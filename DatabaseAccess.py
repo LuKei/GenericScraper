@@ -10,7 +10,8 @@ class DatabaseAccess:
         self.connection = sqlite3.connect(filename + ".db")
         cursor = self.connection.cursor()
 
-        cursor.execute("CREATE TABLE IF NOT EXISTS datasources(id INTEGER PRIMARY KEY, name TEXT NOT NULL, url TEXT NOT NULL)")
+        cursor.execute("CREATE TABLE IF NOT EXISTS datasources(id INTEGER PRIMARY KEY, name TEXT NOT NULL, url TEXT NOT NULL,"
+                       "is_using_ajax BOOLEAN NOT NULL)")
 
         cursor.execute("CREATE TABLE IF NOT EXISTS datasources_type(id INTEGER PRIMARY KEY, name TEXT NOT NULL)")
 
@@ -19,13 +20,14 @@ class DatabaseAccess:
                        "filepath TEXT, FOREIGN KEY (datasource) REFERENCES datasources(id),"
                        "FOREIGN KEY (datasources_type) REFERENCES datasources_type(id))")
 
-        cursor.execute("CREATE  TABLE  IF NOT EXISTS html_identifier(id INTEGER PRIMARY KEY, tag TEXT NOT NULL, "
+        cursor.execute("CREATE  TABLE  IF NOT EXISTS html_identifier(id INTEGER PRIMARY KEY, tag_name TEXT NOT NULL, "
                        "class TEXT, type INTEGER NOT NULL, datasource INTEGER NOT NULL, "
-                       "innerIdentifier INTEGER, isTopIdentifier BOOLEAN,"
+                       "innerIdentifier INTEGER, isTopIdentifier BOOLEAN NOT NULL,"
                        "FOREIGN KEY (datasource) REFERENCES datasources(id))")
 
         cursor.execute("CREATE TABLE IF NOT EXISTS html_attribute(id INTEGER PRIMARY KEY, name TEXT NOT NULL, value TEXT NOT NULL,"
-                       "html_identifier INTEGER NOT NULL, FOREIGN KEY (html_identifier) REFERENCES html_identifier(id))")
+                       "exact_match BOOLEAN NOT NULL, html_identifier INTEGER NOT NULL, "
+                       "FOREIGN KEY (html_identifier) REFERENCES html_identifier(id))")
 
 
 
@@ -64,8 +66,8 @@ class DatabaseAccess:
 
         cursor = self.connection.cursor()
 
-        dattasourceToInsert = (None, datasource.name, datasource.url)
-        cursor.execute("INSERT INTO datasources VALUES(?,?,?)", dattasourceToInsert)
+        dattasourceToInsert = (None, datasource.name, datasource.url, datasource.isUsingAjax)
+        cursor.execute("INSERT INTO datasources VALUES(?,?,?,?)", dattasourceToInsert)
 
         r = cursor.execute("SELECT id FROM datasources AS ds WHERE ds.name = ?", (datasource.name,)).fetchone()
         datasourceId = int(r[0])
@@ -80,9 +82,9 @@ class DatabaseAccess:
         cursor = self.connection.cursor()
 
         if identifier.innerIdentifier is None:
-            cursor.execute("INSERT INTO html_identifier(tag, class, type, datasource, innerIdentifier, isTopIdentifier) "
+            cursor.execute("INSERT INTO html_identifier(tag_name, class, type, datasource, innerIdentifier, isTopIdentifier) "
                            "VALUES (?,?,?,?,?,?)",
-                           (identifier.tag, identifier.class_, identifier.type_.value, datasourceId, None, isTopIdentifier))
+                           (identifier.tagName, identifier.class_, identifier.type_.value, datasourceId, None, isTopIdentifier))
             r = cursor.execute("SELECT last_insert_rowid()").fetchone()
             identifierId = int(r[0])
 
@@ -90,9 +92,9 @@ class DatabaseAccess:
 
             return identifierId
         else:
-            cursor.execute("INSERT INTO html_identifier(tag, class, type, datasource, innerIdentifier, isTopIdentifier) "
+            cursor.execute("INSERT INTO html_identifier(tag_name, class, type, datasource, innerIdentifier, isTopIdentifier) "
                            "VALUES (?,?,?,?,?,?)",
-                           (identifier.tag, identifier.class_, identifier.type_.value, datasourceId,
+                           (identifier.tagName, identifier.class_, identifier.type_.value, datasourceId,
                             self._addInnerIdentifier(datasourceId, identifier.innerIdentifier, isTopIdentifier=False),
                             isTopIdentifier))
 
@@ -109,8 +111,8 @@ class DatabaseAccess:
 
         if attributes is not None:
             for attribute in attributes:
-                cursor.execute("INSERT INTO html_attribute(name, value, html_identifier) VALUES (?,?,?)",
-                               (attribute.name, attribute.value, identifierId))
+                cursor.execute("INSERT INTO html_attribute(name, value, exact_match, html_identifier) VALUES (?,?,?,?)",
+                               (attribute.name, attribute.value, attribute.exactmatch, identifierId))
 
     def addDocument(self, document, datasource):
         #TODO: umbauen, sodass mehrere Texte gleichzeitig eingefügt werden können
@@ -146,10 +148,10 @@ class DatabaseAccess:
             return None
 
         cursor = self.connection.cursor()
-        cursor.execute("SELECT id, name, url FROM datasources WHERE name = ?", (name,))
+        cursor.execute("SELECT id, name, url, is_using_ajax FROM datasources WHERE name = ?", (name,))
         datasourceRow = cursor.fetchone()
 
-        cursor.execute("SELECT tag, class, type, innerIdentifier, isTopIdentifier FROM html_identifier "
+        cursor.execute("SELECT tag_name, class, type, innerIdentifier, isTopIdentifier FROM html_identifier "
                        "WHERE datasource = ? AND isTopIdentifier = 1", (datasourceRow[0],))
         identifierRows = cursor.fetchall()
         identifiers = []
@@ -159,7 +161,7 @@ class DatabaseAccess:
             self._appendInnerIdentifier(identifier, innerIdentifierId=identifierRow[3])
             identifiers.append(identifier)
 
-        datasource = Datasource(datasourceRow[1], datasourceRow[2], identifiers)
+        datasource = Datasource(datasourceRow[1], datasourceRow[2], identifiers, datasourceRow[3])
 
         return datasource
 
@@ -170,7 +172,7 @@ class DatabaseAccess:
 
         cursor = self.connection.cursor()
 
-        cursor.execute("SELECT tag, class, type, innerIdentifier FROM html_identifier WHERE id = ?", (innerIdentifierId,))
+        cursor.execute("SELECT tag_name, class, type, innerIdentifier FROM html_identifier WHERE id = ?", (innerIdentifierId,))
         r=cursor.fetchone()
 
         nextInnerIdentifierId = r[3]
@@ -188,11 +190,11 @@ class DatabaseAccess:
 
         attributes = []
 
-        cursor.execute("SELECT name, value FROM html_attribute WHERE html_identifier = ?", (identifierId,))
+        cursor.execute("SELECT name, value, exact_match FROM html_attribute WHERE html_identifier = ?", (identifierId,))
         attributeRows = cursor.fetchall()
 
         for attributeRow in attributeRows:
-            attributes.append(HtmlAttribute(attributeRow[0], attributeRow[1]))
+            attributes.append(HtmlAttribute(attributeRow[0], attributeRow[1], attributeRow[2]))
 
         return attributes
 

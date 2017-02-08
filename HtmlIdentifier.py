@@ -3,8 +3,8 @@ from enum import Enum
 
 class HtmlIdentifier:
 
-    def __init__(self, tag, class_=None, type_=None, additionalAttributes = None):
-        self.tag = tag
+    def __init__(self, tagName, class_=None, type_=None, additionalAttributes = None):
+        self.tagName = tagName
         self.class_ = class_
         self.type_ = type_
         if type_ is None:
@@ -23,21 +23,22 @@ class HtmlIdentifier:
             self.innerIdentifier.addInnermostIdentifier(identifier)
 
 
-    def getAdditionalAttributesDict(self):
-        dic = {}
-
-        if self.additionalAttributes is not None:
-            for attribute in self.additionalAttributes:
-                dic[attribute.name] = attribute.value
-
-        return dic
+    # def getAdditionalAttributesDict(self):
+    #     dic = {}
+    #
+    #     if self.additionalAttributes is not None:
+    #         for attribute in self.additionalAttributes:
+    #             dic[attribute.name] = attribute.value
+    #
+    #     return dic
 
 
 class HtmlAttribute:
 
-    def __init__(self, name, value):
+    def __init__(self, name, value, exactmatch = True):
         self.name = name
         self.value = value
+        self.exactmatch = exactmatch
 
 
 class IdentifierType(Enum):
@@ -48,4 +49,5 @@ class IdentifierType(Enum):
     DOCUMENTSUBTITLE = 5
     LEGALTEXTCONTENT = 6
     DATEIDENTIFIER = 7
+    AJAXWAIT = 8
     NONE = 99

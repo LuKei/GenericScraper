@@ -96,17 +96,17 @@ class DatabaseAccessTest(unittest.TestCase):
         self.assertEqual(websiteFromDb.name, website.name)
         self.assertEqual(websiteFromDb.url, website.url)
 
-        self.assertEqual(websiteFromDb.getOutermostIdentifier(IdentifierType.NEXTPAGE).tag, website.getOutermostIdentifier(IdentifierType.NEXTPAGE).tag)
+        self.assertEqual(websiteFromDb.getOutermostIdentifier(IdentifierType.NEXTPAGE).tagName, website.getOutermostIdentifier(IdentifierType.NEXTPAGE).tagName)
         self.assertEqual(websiteFromDb.getOutermostIdentifier(IdentifierType.NEXTPAGE).class_, website.getOutermostIdentifier(IdentifierType.NEXTPAGE).class_)
-        self.assertEqual(websiteFromDb.getOutermostIdentifier(IdentifierType.LISTITEM).tag, website.getOutermostIdentifier(IdentifierType.LISTITEM).tag)
+        self.assertEqual(websiteFromDb.getOutermostIdentifier(IdentifierType.LISTITEM).tagName, website.getOutermostIdentifier(IdentifierType.LISTITEM).tagName)
         self.assertEqual(websiteFromDb.getOutermostIdentifier(IdentifierType.LISTITEM).class_, website.getOutermostIdentifier(IdentifierType.LISTITEM).class_)
-        self.assertEqual(websiteFromDb.getOutermostIdentifier(IdentifierType.DOWNLOADLINK).tag, website.getOutermostIdentifier(IdentifierType.DOWNLOADLINK).tag)
+        self.assertEqual(websiteFromDb.getOutermostIdentifier(IdentifierType.DOWNLOADLINK).tagName, website.getOutermostIdentifier(IdentifierType.DOWNLOADLINK).tagName)
         self.assertEqual(websiteFromDb.getOutermostIdentifier(IdentifierType.DOWNLOADLINK).class_, website.getOutermostIdentifier(IdentifierType.DOWNLOADLINK).class_)
-        self.assertEqual(websiteFromDb.getOutermostIdentifier(IdentifierType.DOCUMENTTITLE).tag, website.getOutermostIdentifier(IdentifierType.DOCUMENTTITLE).tag)
+        self.assertEqual(websiteFromDb.getOutermostIdentifier(IdentifierType.DOCUMENTTITLE).tagName, website.getOutermostIdentifier(IdentifierType.DOCUMENTTITLE).tagName)
         self.assertEqual(websiteFromDb.getOutermostIdentifier(IdentifierType.DOCUMENTTITLE).class_,
                          website.getOutermostIdentifier(IdentifierType.DOCUMENTTITLE).class_)
-        self.assertEqual(websiteFromDb.getOutermostIdentifier(IdentifierType.LEGALTEXTCONTENT).tag,
-                         website.getOutermostIdentifier(IdentifierType.LEGALTEXTCONTENT).tag)
+        self.assertEqual(websiteFromDb.getOutermostIdentifier(IdentifierType.LEGALTEXTCONTENT).tagName,
+                         website.getOutermostIdentifier(IdentifierType.LEGALTEXTCONTENT).tagName)
         self.assertEqual(websiteFromDb.getOutermostIdentifier(IdentifierType.LEGALTEXTCONTENT).class_,
                          website.getOutermostIdentifier(IdentifierType.LEGALTEXTCONTENT).class_)
 
