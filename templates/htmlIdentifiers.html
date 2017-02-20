@@ -3,8 +3,7 @@
 {% block body %}
 
 <ul class="nav nav-tabs">
-     <li role="presentation" class="active"><a href="#{{ types(1) }}" data-toggle="tab">{{ types(1).name }}</a></li>
-    {% for i in range(2, types|length) %}
+    {% for i in range(1, types|length) %}
         <li role="presentation"><a href="#{{ i }}" data-toggle="tab">{{ types(i).name }}</a></li>
     {% endfor %}
 </ul>
@@ -12,12 +11,19 @@
     {% for i in range(1, types|length) %}
         <div class="tab-pane" id="{{ i }}">
             {% for identifier in identifiersDict[types(i)] %}
+                <ul class="list-group">
+                <li class="list-group-item">
                     <h3>tag name: {{ identifier.tagName }}</h3>
                     <h3>css classes: {{ identifier.class_ }}</h3>
-                    {% for attribute in identifier.attributes %}
+                    {% for attribute in identifier.additionalAttributes %}
                         <h3>attribute name: {{ attribute.name }}; attribute value: {{ attribute.value }}; exact match: {{ attribute.exactmatch }}</h3>
                     {% endfor %}
             {% endfor %}
+            {% for identifier in identifiersDict[types(i)] %}
+                </li>
+                </ul>
+            {% endfor %}
+            </ul>
         </div>
     {% endfor %}
 </div>

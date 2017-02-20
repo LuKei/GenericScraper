@@ -15,6 +15,7 @@ class Scraper:
 
     def __init__(self, dbAccess):
         self.dbAccess = dbAccess
+        self.isRunning = False
 
     def scrapeDatasources(self, datasources):
         for datasource in datasources:
@@ -22,6 +23,8 @@ class Scraper:
 
 
     def scrapeDatasource(self, datasource):
+
+        isRunning = True
 
         #Variablen für logging
         scrapedDocuments = 0
@@ -194,6 +197,8 @@ class Scraper:
         print("Erfasste Dokumente: " + str(scrapedDocuments))
         print("Übersprungen wegen selben Namens: " + str(sameDocument))
         print("Übersprungen, weil kein Download-Link gefunden wurde:" + str(noDownloadlink))
+
+        isRunning = False
 
 
     @staticmethod

@@ -1,12 +1,13 @@
 import unittest
 from DatabaseAccessTest import DatabaseAccessTest
 from Datasource import Datasource
-from HtmlIdentifier import  HtmlIdentifier, IdentifierType, HtmlAttribute
+from HtmlIdentifier import HtmlIdentifier, IdentifierType, HtmlAttribute
 from Scraper import Scraper
 
 class ScraperTest(unittest.TestCase):
 
     def test_scrapeWebsite(self):
+
         dbAccess = DatabaseAccessTest.createDbAccess()
 
 
@@ -19,9 +20,9 @@ class ScraperTest(unittest.TestCase):
         datasource7 = self.createBundesfinanzhofDatasource()
 
 
-        datasources = [datasource1, datasource4]
+        datasources = [datasource1, datasource2, datasource3, datasource4, datasource5, datasource6, datasource7]
         scraper = Scraper(dbAccess)
-        scraper.scrapeDatasource(datasource3)
+        scraper.scrapeDatasource(datasource2)
         #scraper.scrapeDatasources(datasources)
 
 
@@ -239,9 +240,11 @@ class ScraperTest(unittest.TestCase):
 
         identifiers = [nextPageIdentifier, listItemIdentifier, downloadLinkIdentifier, dateIdentifier]
 
-        datasource = Datasource("Bundesministerium der Finanzen",
-                                "http://www.bundesfinanzministerium.de/Web/DE/Service/"
-                                "Publikationen/BMF_Schreiben/bmf_schreiben.html",
+        datasource = Datasource("Curia",
+                                "http://curia.europa.eu/juris/documents.jsf?pro=&lgrec=de&nat=or&oqp=&"
+                                "dates=%2524type%253Dpro%2524mode%253D5Y%2524from%253D2012.02.06%2524to%253D2017.02.06&lg=&language=de"
+                                "&jur=C%2CT%2CF&cit=none%252CC%252CCJ%252CR%252C2008E%252C%252C%252C%252C%252C%252C%252C%252C%252C%252Ctrue%252C"
+                                "false%252Cfalse&td=%3BALL&pcs=Oor&avg=&page=1&mat=or&jge=&for=&cid=176760",
                                 identifiers=identifiers)
         return datasource
 

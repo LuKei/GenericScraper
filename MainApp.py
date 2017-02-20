@@ -2,16 +2,28 @@ from flask import Flask, render_template, g, flash, request, url_for, redirect
 from DatabaseAccess import DatabaseAccess
 from Datasource import Datasource, DatasourceType
 from HtmlIdentifier import HtmlIdentifier, HtmlAttribute, IdentifierType
+from Scraper import Scraper
 import os
 
 app = Flask(__name__)
-
-
 
 @app.route("/")
 def showMain():
     return render_template("main.html", datasources=getDbAccess().getDatasources())
 
+@app.route("/datasources/<name>/scrape/")
+def scrapeDatasource(name):
+
+    datasource = getDbAccess().getDatasource(name=name)
+
+    if scraper is None:
+        Scraper(getDbAccess())
+
+    if not scraper.isRunning:
+        scraper.scrapeDatasource(datasource)
+    else:
+        #TODO
+        print("Scraper already running")
 
 
 @app.route("/addDatasource/", methods=["GET", "POST"])
@@ -111,4 +123,5 @@ def closeDbAccess(error):
 
 
 if __name__ == "__main__":
+    scraper = None
     app.run(debug=True)

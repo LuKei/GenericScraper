@@ -74,7 +74,7 @@ class DatabaseAccess:
 
         if datasource.identifiers is not None:
             for identifier in datasource.identifiers:
-                self._addInnerIdentifier(datasourceId, identifier, isTopIdentifier=True)
+                self._addIdentifierRec(datasourceId, identifier, isTopIdentifier=True)
 
         return True
 
@@ -94,11 +94,11 @@ class DatabaseAccess:
                            (datasourceId, htmlIdentifier.type_.value)).fetchall()
         hasIdentifier = len(r) > 0
 
-        self._addInnerIdentifier(datasourceId, htmlIdentifier, isTopIdentifier= not hasIdentifier)
+        self._addInnermostIdentifier(datasourceId, htmlIdentifier, isTopIdentifier=not hasIdentifier)
 
 
 
-    def _addInnerIdentifier(self, datasourceId, identifier, isTopIdentifier):
+    def _addIdentifierRec(self, datasourceId, identifier, isTopIdentifier):
         cursor = self.connection.cursor()
 
         if identifier.innerIdentifier is None:
@@ -115,7 +115,7 @@ class DatabaseAccess:
             cursor.execute("INSERT INTO html_identifier(tag_name, class, type, datasource, innerIdentifier, isTopIdentifier) "
                            "VALUES (?,?,?,?,?,?)",
                            (identifier.tagName, identifier.class_, identifier.type_.value, datasourceId,
-                            self._addInnerIdentifier(datasourceId, identifier.innerIdentifier, isTopIdentifier=False),
+                            self._addIdentifierRec(datasourceId, identifier.innerIdentifier, isTopIdentifier=False),
                             isTopIdentifier))
 
             r = cursor.execute("SELECT last_insert_rowid()").fetchone()
@@ -124,6 +124,37 @@ class DatabaseAccess:
             self._addHtmlAttributes(identifier.additionalAttributes, identifierId)
 
             return identifierId
+
+
+
+    def _addInnermostIdentifier(self, datasourceId, identifier, isTopIdentifier):
+        cursor = self.connection.cursor()
+
+        cursor.execute("INSERT INTO html_identifier(tag_name, class, type, datasource, innerIdentifier, isTopIdentifier) "
+                       "VALUES (?,?,?,?,?,?)",
+                       (identifier.tagName, identifier.class_, identifier.type_.value, datasourceId, None, isTopIdentifier))
+        newInnermostIdentifierId = int(cursor.execute("SELECT last_insert_rowid()").fetchone()[0])
+
+        self._addHtmlAttributes(identifier.additionalAttributes, newInnermostIdentifierId)
+
+        if not isTopIdentifier:
+            #Verlinkung des alten innersten identifier auf den neuen innersten identifier
+            cursor.execute("SELECT id FROM html_identifier WHERE datasource = ? AND isTopIdentifier = ? AND type = ?",
+                           (datasourceId, True, identifier.type_.value))
+            oldInnermostIdentifierId = cursor.fetchone()[0]
+            while True:
+                cursor.execute("SELECT innerIdentifier FROM html_identifier WHERE id = ?", (oldInnermostIdentifierId,))
+                r = cursor.fetchone()
+                if r[0] is not None:
+                    oldInnermostIdentifierId = r[0]
+                else:
+                    break
+
+            cursor.execute("UPDATE html_identifier SET innerIdentifier = ? WHERE id = ?",
+                           (newInnermostIdentifierId, oldInnermostIdentifierId))
+
+
+
 
 
     def _addHtmlAttributes(self, attributes, identifierId):
@@ -178,7 +209,7 @@ class DatabaseAccess:
         for identifierRow in identifierRows:
             identifier = HtmlIdentifier(identifierRow[0], identifierRow[1], IdentifierType(identifierRow[2]))
             identifier.additionalAttributes = self._getHtmlAttributes(identifierId=identifierRow[3])
-            self._appendInnerIdentifier(identifier, innerIdentifierId=identifierRow[3])
+            self._appendIdentifierRec(identifier, innerIdentifierId=identifierRow[3])
             identifiers.append(identifier)
 
         datasource = Datasource(datasourceRow[1], datasourceRow[2], identifiers, datasourceRow[3])
@@ -197,11 +228,11 @@ class DatabaseAccess:
 
             return datasources
 
-        return None
+        return []
 
 
 
-    def _appendInnerIdentifier(self, identifier, innerIdentifierId):
+    def _appendIdentifierRec(self, identifier, innerIdentifierId):
         if innerIdentifierId is None:
             return
 
@@ -217,7 +248,7 @@ class DatabaseAccess:
         if innerIdentifierId is None:
             return
         else:
-            self._appendInnerIdentifier(innerIdentifier,nextInnerIdentifierId)
+            self._appendIdentifierRec(innerIdentifier, nextInnerIdentifierId)
 
 
     def _getHtmlAttributes(self, identifierId):
