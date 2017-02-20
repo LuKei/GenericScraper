@@ -2,8 +2,9 @@ import os
 import unittest
 from DatabaseAccess import DatabaseAccess
 from HtmlIdentifier import HtmlIdentifier, IdentifierType
-from Test.DatasourceTest import DatasourceTest
-from Test.DocumentTest import DocumentTest
+from DocumentTest import DocumentTest
+from DatasourceTest import DatasourceTest
+
 
 
 class DatabaseAccessTest(unittest.TestCase):
@@ -17,7 +18,7 @@ class DatabaseAccessTest(unittest.TestCase):
         self.assertTrue(dbAcces.datasourceExists("testname"))
 
         dbAcces.close()
-        os.remove("Test.db")
+        os.remove("test.db")
 
     def test_documentExists(self):
         dbAcces = DatabaseAccessTest.createDbAccess()
@@ -32,7 +33,7 @@ class DatabaseAccessTest(unittest.TestCase):
         self.assertTrue(dbAcces.documentExists(doc.title, datasource.name))
 
         dbAcces.close()
-        os.remove("Test.db")
+        os.remove("test.db")
 
     def test_documentTitlesInDb(self):
         dbAcces = DatabaseAccessTest.createDbAccess()
@@ -44,7 +45,7 @@ class DatabaseAccessTest(unittest.TestCase):
         doc4 = DocumentTest.createDocument("testtitle4", datasource2)
 
 
-        self.assertEqual(len(dbAcces.documentTitlesInDb(datasource1)),0)
+        self.assertEqual(len(dbAcces.documentTitlesInDb(datasource1.name)),0)
 
         dbAcces.addDatasource(datasource1)
         dbAcces.addDatasource(datasource2)
@@ -53,12 +54,12 @@ class DatabaseAccessTest(unittest.TestCase):
         dbAcces.addDocument(doc3, datasource2)
         dbAcces.addDocument(doc4, datasource2)
 
-        docTitles = dbAcces.documentTitlesInDb(datasource1)
+        docTitles = dbAcces.documentTitlesInDb(datasource1.name)
         self.assertTrue(docTitles[0], "testtitle1")
         self.assertTrue(docTitles[1], "testtitle2")
 
         dbAcces.close()
-        os.remove("Test.db")
+        os.remove("test.db")
 
     def test_addDatasource(self):
         dbAcces = DatabaseAccessTest.createDbAccess()
@@ -68,7 +69,7 @@ class DatabaseAccessTest(unittest.TestCase):
         self.assertFalse(dbAcces.addDatasource(datasource)) #Website bereits in Db
 
         dbAcces.close()
-        os.remove("Test.db")
+        os.remove("test.db")
 
     def test_addDocument(self):
         dbAcces = DatabaseAccessTest.createDbAccess()
@@ -83,7 +84,7 @@ class DatabaseAccessTest(unittest.TestCase):
         self.assertEqual(dbAcces.addDocument(doc, website), -1) #Text bereits in Db
 
         dbAcces.close()
-        os.remove("Test.db")
+        os.remove("test.db")
 
     def test_getDatasource(self):
         dbAcces = DatabaseAccessTest.createDbAccess()
@@ -111,7 +112,22 @@ class DatabaseAccessTest(unittest.TestCase):
                          website.getOutermostIdentifier(IdentifierType.LEGALTEXTCONTENT).class_)
 
         dbAcces.close()
-        os.remove("Test.db")
+        os.remove("test.db")
+
+    def test_getDatasources(self):
+        dbAcces = DatabaseAccessTest.createDbAccess()
+        datasource1 = DatasourceTest.createDatasource("testname1")
+        datasource2 = DatasourceTest.createDatasource("testname2")
+
+        self.assertEqual(dbAcces.getDatasources(), None)
+
+        dbAcces.addDatasource(datasource1)
+        dbAcces.addDatasource(datasource2)
+
+        self.assertEqual(len(dbAcces.getDatasources()), 2)
+
+        dbAcces.close()
+        os.remove("test.db")
 
     def test_getDocuments(self):
         dbAcces = DatabaseAccessTest.createDbAccess()
@@ -137,11 +153,11 @@ class DatabaseAccessTest(unittest.TestCase):
         self.assertEqual(textsFromDb[1].title, "testtitle2")
 
         dbAcces.close()
-        os.remove("Test.db")
+        os.remove("test.db")
 
     @staticmethod
     def createDbAccess():
-        return DatabaseAccess("Test")
+        return DatabaseAccess("test")
 
 
     if __name__ == '__main__':

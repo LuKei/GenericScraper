@@ -1,5 +1,5 @@
 import unittest
-from Test.DatabaseAccessTest import DatabaseAccessTest
+from DatabaseAccessTest import DatabaseAccessTest
 from Datasource import Datasource
 from HtmlIdentifier import  HtmlIdentifier, IdentifierType, HtmlAttribute
 from Scraper import Scraper
@@ -19,10 +19,10 @@ class ScraperTest(unittest.TestCase):
         datasource7 = self.createBundesfinanzhofDatasource()
 
 
-        datasources = [datasource1, datasource2, datasource3, datasource4, datasource5]
+        datasources = [datasource1, datasource4]
         scraper = Scraper(dbAccess)
-        #scraper.scrapeDatasource(datasource6)
-        scraper.scrapeDatasources(datasources)
+        scraper.scrapeDatasource(datasource3)
+        #scraper.scrapeDatasources(datasources)
 
 
     def createBundesfinanzministeriumDatasource(self):

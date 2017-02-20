@@ -1,0 +1,29 @@
+{% extends "header.html" %}
+
+{% block body %}
+
+<div class="container">
+  <br>
+  <h4>Please enter datasource data:</h4>
+  <br>
+  <form action="" class="form-inline" method="post">
+      <input type="text" class="form-control" placeholder="name" name="name" value="{{ request.form.name }}">
+      <br><br>
+      <input type="text" class="form-control" placeholder="url" name="url" value="{{ request.form.url }}">
+      <br><br>
+      <div class="form-grouping">
+        <label>
+            <input type="checkbox" name="isUsingAjax" value="{{ request.form.isUsingAjax }}">
+            is using Ajax
+        </label>
+      </div>
+
+
+      <br><br>
+      <input class="btn btn-default" type="submit" value="Add">
+  </form>
+</div>
+
+<p>{{ error }}</p>
+
+{% endblock %}

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Home</title>
+    <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
+</head>
+
+<header>
+    <div class="navbar-fixed" style="background-color:#c3c3c3">
+        <ul class="nav nav-pills">
+          <li role="presentation">
+              <a class="brand-logo" href="/">
+                <img src="{{ url_for('static', filename='images/mainlogo.png') }}" style="max-width:75px; margin-top:5px">
+              </a>
+          </li>
+          <li role="presentation"><a href="/" style="margin-top:20px">Home</a></li>
+          <li role="presentation"><a href="/addDatasource/" style="margin-top:20px">Add datasource</a></li>
+          <li role="presentation"><a href="/viewDatabase/" style="margin-top:20px">View database</a></li>
+        </ul>
+    </div>
+
+
+</header>
+
+<body>
+
+    <div class="border-row" style="width:100%; margin-bottom: 15px"></div>
+
+    <div class="container-fluid" style="min-height:100%">
+
+        {% block body %}{% endblock %}
+
+    </div>
+
+    <script src="//code.jquery.com/jquery-1.11.1.min.js"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
+
+
+</body>
+
+
+</html>

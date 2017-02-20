@@ -23,9 +23,9 @@ class Scraper:
 
     def scrapeDatasource(self, datasource):
 
-        #variables for logging
+        #Variablen für logging
         scrapedDocuments = 0
-        sameName = 0
+        sameDocument = 0
         noDownloadlink = 0
 
 
@@ -46,6 +46,7 @@ class Scraper:
         nextPageIdentifier = datasource.getOutermostIdentifier(IdentifierType.NEXTPAGE)
         dateIdentifier = datasource.getOutermostIdentifier(IdentifierType.DATEIDENTIFIER)
         ajaxWaitIdentifier = datasource.getOutermostIdentifier(IdentifierType.AJAXWAIT)
+
 
 
         folderPath = "documents_" + datasource.name
@@ -81,10 +82,11 @@ class Scraper:
 
         soup = bs.BeautifulSoup(source, "lxml")
 
+        i = 0
 
         while True:
 
-            i = 0
+
 
             # alle ListItems durchlaufen
             for li in self._getInnerItemsFromSoup(soup, listItemIdentifier):
@@ -105,8 +107,10 @@ class Scraper:
 
                 if titleIdentifier is not None:
                     documentTitleItems = self._getInnerItemsFromSoup(soup2, titleIdentifier)
-                    document.title = documentTitleItems[0].text.strip()
-
+                    if len(documentTitleItems) > 0:
+                        document.title = documentTitleItems[0].text.strip()
+                    else:
+                        document.title = li.text.strip()
                 else:
                     document.title = li.text.strip()
 
@@ -128,11 +132,12 @@ class Scraper:
                         if documentInDb.date < document.date:
                             self.dbAccess.removeDocument(documentInDb.title, datasource)
                         else:
-                            continue
                             sameDocument += 1
+                            continue
+
                     else:
-                        continue
                         sameDocument += 1
+                        continue
 
                 if downloadLinkIdentifier is None:
                     # TODO
@@ -143,8 +148,9 @@ class Scraper:
 
                     if len(downloadLinkItems) == 0:
                         # TODO: mehrere DownloadLinks zulassen?
-                        continue
                         noDownloadlink += 1
+                        continue
+
 
                     downloadLink = downloadLinkItems[0].get("href")
                     downloadResponse = Scraper.openLinkNonAjax(downloadLink, datasource)
@@ -185,9 +191,9 @@ class Scraper:
             driver.close()
 
         print("Wesbeite: " + datasource.name)
-        print("Erfasste Dokumente: " + scrapedDocuments)
-        print("Übersprungen wegen selben Namens: " + sameName)
-        print("Übersprungen, weil kein Download-Link gefunden wurde:" + noDownloadlink)
+        print("Erfasste Dokumente: " + str(scrapedDocuments))
+        print("Übersprungen wegen selben Namens: " + str(sameDocument))
+        print("Übersprungen, weil kein Download-Link gefunden wurde:" + str(noDownloadlink))
 
 
     @staticmethod

@@ -1,0 +1,43 @@
+{% extends "header.html" %}
+
+{% block body %}
+
+<div class="container">
+  <br>
+  <h4>Please enter identifier data:</h4>
+  <br>
+  <form action="" class="form-inline" method="post">
+      <input type="text" class="form-control" placeholder="tag name" name="tagName" value="{{ request.form.tagName }}">
+      <br><br>
+      <input type="text" class="form-control" placeholder="css classes" name="class_" value="{{ request.form.class_ }}">
+      <br><br>
+      <select class="form-control" name="type_" value="{{ request.form.type_ }}">
+          {% for type in types %}
+                <option>{{ type.name }}</option>
+          {% endfor %}
+      </select>
+      <br><br>
+      <input type="text" class="form-control" placeholder="attribute name" name="attr1Name" value="{{ request.form.attr1Name }}">
+      <input type="text" class="form-control" placeholder="attribute value" name="attr1Val" value="{{ request.form.attr1Val }}">
+      <br><br>
+      <input type="text" class="form-control" placeholder="attribute name" name="attr2Name" value="{{ request.form.attr2Name }}">
+      <input type="text" class="form-control" placeholder="attribute value" name="attr2Val" value="{{ request.form.attr2Val }}">
+      <br><br>
+      <input type="text" class="form-control" placeholder="attribute name" name="attr3Name" value="{{ request.form.attr3Name }}">
+      <input type="text" class="form-control" placeholder="attribute value" name="attr3Val" value="{{ request.form.attr3Val }}">
+      <br><br>
+      <input type="text" class="form-control" placeholder="attribute name" name="attr4Name" value="{{ request.form.attr4Name }}">
+      <input type="text" class="form-control" placeholder="attribute value" name="attr4Val" value="{{ request.form.attr4Val }}">
+      <br><br>
+      <input type="text" class="form-control" placeholder="attribute name" name="attr5Name" value="{{ request.form.attr5Name }}">
+      <input type="text" class="form-control" placeholder="attribute value" name="attr5Val" value="{{ request.form.attr5Val }}">
+      <br><br>
+      <br><br>
+      <input class="btn btn-default" type="submit" value="Add">
+  </form>
+</div>
+
+<p>{{ error }}</p>
+
+
+{% endblock %}

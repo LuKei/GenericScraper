@@ -51,10 +51,10 @@ class DatabaseAccess:
         return True
 
 
-    def documentTitlesInDb(self, datasource):
+    def documentTitlesInDb(self, datasourceName):
         cursor = self.connection.cursor()
         cursor.execute("SELECT title FROM dokumente AS doc INNER JOIN datasources AS ds ON doc.datasource = ds.id "
-                       "WHERE ds.name = ?", (datasource.name,))
+                       "WHERE ds.name = ?", (datasourceName,))
         return cursor.fetchall()
 
 
@@ -72,10 +72,30 @@ class DatabaseAccess:
         r = cursor.execute("SELECT id FROM datasources AS ds WHERE ds.name = ?", (datasource.name,)).fetchone()
         datasourceId = int(r[0])
 
-        for identifier in datasource.identifiers:
-            self._addInnerIdentifier(datasourceId, identifier, isTopIdentifier=True)
+        if datasource.identifiers is not None:
+            for identifier in datasource.identifiers:
+                self._addInnerIdentifier(datasourceId, identifier, isTopIdentifier=True)
 
         return True
+
+
+
+    def addIdentifierToDatasource(self, datasourceName, htmlIdentifier):
+        if not self.datasourceExists(datasourceName):
+            print("Eine Datasource mit diesem Namen existiert nicht")
+            return False
+
+        cursor = self.connection.cursor()
+
+        r = cursor.execute("SELECT id FROM datasources WHERE name = ?", (datasourceName,)).fetchone()
+        datasourceId = r[0]
+
+        r = cursor.execute("SELECT id FROM html_identifier WHERE datasource = ? AND type= ?",
+                           (datasourceId, htmlIdentifier.type_.value)).fetchall()
+        hasIdentifier = len(r) > 0
+
+        self._addInnerIdentifier(datasourceId, htmlIdentifier, isTopIdentifier= not hasIdentifier)
+
 
 
     def _addInnerIdentifier(self, datasourceId, identifier, isTopIdentifier):
@@ -165,6 +185,21 @@ class DatabaseAccess:
 
         return datasource
 
+    def getDatasources(self):
+        cursor = self.connection.cursor()
+        cursor.execute("SELECT name FROM datasources")
+        nameRows = cursor.fetchall()
+
+        if len(nameRows) > 0:
+            datasources = []
+            for row in nameRows:
+                datasources.append(self.getDatasource(row[0]))
+
+            return datasources
+
+        return None
+
+
 
     def _appendInnerIdentifier(self, identifier, innerIdentifierId):
         if innerIdentifierId is None:
@@ -178,7 +213,7 @@ class DatabaseAccess:
         nextInnerIdentifierId = r[3]
         innerIdentifier = HtmlIdentifier(r[0], r[1], IdentifierType(r[2]))
         innerIdentifier.additionalAttributes = self._getHtmlAttributes(identifierId=innerIdentifierId)
-        identifier.InnerIdentifier = innerIdentifier
+        identifier.innerIdentifier = innerIdentifier
         if innerIdentifierId is None:
             return
         else:

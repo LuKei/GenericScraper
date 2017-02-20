@@ -9,18 +9,20 @@ class DatasourceTest(unittest.TestCase):
         website = DatasourceTest.createDatasource("testname")
         self.assertEqual(website.name, "testname")
         self.assertEqual(website.url, "testurl")
-        self.assertEqual(website.getOutermostIdentifier(IdentifierType.NEXTPAGE).tag, "testtag")
+        self.assertEqual(website.getOutermostIdentifier(IdentifierType.NEXTPAGE).tagName, "testtag")
         self.assertEqual(website.getOutermostIdentifier(IdentifierType.NEXTPAGE).class_, "testclass")
         self.assertEqual(website.getOutermostIdentifier(IdentifierType.NEXTPAGE).innerIdentifier.additionalAttributes[0].name, "testname")
         self.assertEqual(website.getOutermostIdentifier(IdentifierType.NEXTPAGE).innerIdentifier.additionalAttributes[0].value, "testvalue")
-        self.assertEqual(website.getOutermostIdentifier(IdentifierType.LISTITEM).tag, "testtag")
+        self.assertEqual(website.getOutermostIdentifier(IdentifierType.LISTITEM).tagName, "testtag")
         self.assertEqual(website.getOutermostIdentifier(IdentifierType.LISTITEM).class_, "testclass")
-        self.assertEqual(website.getOutermostIdentifier(IdentifierType.DOWNLOADLINK).tag, "testtag")
+        self.assertEqual(website.getOutermostIdentifier(IdentifierType.DOWNLOADLINK).tagName, "testtag")
         self.assertEqual(website.getOutermostIdentifier(IdentifierType.DOWNLOADLINK).class_, "testclass")
-        self.assertEqual(website.getOutermostIdentifier(IdentifierType.DOCUMENTTITLE).tag, "testtag")
+        self.assertEqual(website.getOutermostIdentifier(IdentifierType.DOCUMENTTITLE).tagName, "testtag")
         self.assertEqual(website.getOutermostIdentifier(IdentifierType.DOCUMENTTITLE).class_, "testclass")
-        self.assertEqual(website.getOutermostIdentifier(IdentifierType.LEGALTEXTCONTENT).tag, "testtag")
+        self.assertEqual(website.getOutermostIdentifier(IdentifierType.LEGALTEXTCONTENT).tagName, "testtag")
         self.assertEqual(website.getOutermostIdentifier(IdentifierType.LEGALTEXTCONTENT).class_, "testclass")
+
+
 
     @staticmethod
     def createDatasource(name):
@@ -33,6 +35,8 @@ class DatasourceTest(unittest.TestCase):
         identifiers[0].addInnermostIdentifier(HtmlIdentifier("testtag1", "testclass1", IdentifierType.NEXTPAGE, [HtmlAttribute("testname", "testvalue")]))
 
         return Datasource(name, "testurl", identifiers)
+
+        #return Datasource(name="nameWithoutIdentifiers", url="urlWithoutIdentifiers", isUsingAjax=False)
 
     if __name__ == '__main__':
         unittest.main()
