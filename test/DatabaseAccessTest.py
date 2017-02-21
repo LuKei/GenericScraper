@@ -119,7 +119,7 @@ class DatabaseAccessTest(unittest.TestCase):
         datasource1 = DatasourceTest.createDatasource("testname1")
         datasource2 = DatasourceTest.createDatasource("testname2")
 
-        self.assertEqual(dbAcces.getDatasources(), None)
+        self.assertEqual(dbAcces.getDatasources(), [])
 
         dbAcces.addDatasource(datasource1)
         dbAcces.addDatasource(datasource2)

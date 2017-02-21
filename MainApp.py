@@ -7,23 +7,22 @@ import os
 
 app = Flask(__name__)
 
+latestType = IdentifierType.NEXTPAGE.value #Dient dazu, den als letzten ausgewählten Typ beim hinzufügen eines HtmlIdentifiers zu speichern
+
 @app.route("/")
 def showMain():
     return render_template("main.html", datasources=getDbAccess().getDatasources())
+
+
 
 @app.route("/datasources/<name>/scrape/")
 def scrapeDatasource(name):
 
     datasource = getDbAccess().getDatasource(name=name)
+    Scraper.startScrapingDatasource(datasource)
 
-    if scraper is None:
-        Scraper(getDbAccess())
+    return redirect(url_for("showMain"))
 
-    if not scraper.isRunning:
-        scraper.scrapeDatasource(datasource)
-    else:
-        #TODO
-        print("Scraper already running")
 
 
 @app.route("/addDatasource/", methods=["GET", "POST"])
@@ -68,9 +67,9 @@ def showHtmlIdentfiers(name):
 
     return render_template("htmlIdentifiers.html", datasource=datasource, types=IdentifierType, identifiersDict=identifiersDict)
 
-
 @app.route("/datasources/<name>/addIdentifier/", methods=["GET", "POST"])
-def addHtmlIdentifier(name):
+@app.route("/datasources/<name>/addIdentifier/<int:defaultType>", methods=["GET", "POST"])
+def addHtmlIdentifier(name, defaultType=latestType):
     try:
         if request.method == "POST":
             tagName = request.form.get("tagName")
@@ -98,9 +97,11 @@ def addHtmlIdentifier(name):
             getDbAccess().addIdentifierToDatasource(name, htmlIdentifier)
             getDbAccess().commit()
 
+            global latestType
+            latestType = type_.value
             return redirect(url_for("showMain"))
 
-        return render_template("addIdentifier.html", datasource=getDbAccess().getDatasource(name), types=IdentifierType)
+        return render_template("addIdentifier.html", datasource=getDbAccess().getDatasource(name), types=IdentifierType, defaultType=defaultType)
 
     except Exception as e:
         getDbAccess().rollback()
@@ -109,8 +110,8 @@ def addHtmlIdentifier(name):
 
 
 def getDbAccess():
-    if not hasattr(g, 'dbAccess'):
-        g.dbAccess = DatabaseAccess(os.path.expanduser(r"~\Desktop\ScraperDb"))
+    if not hasattr(g, "dbAccess"):
+        g.dbAccess = DatabaseAccess()
     return g.dbAccess
 
 
@@ -123,5 +124,4 @@ def closeDbAccess(error):
 
 
 if __name__ == "__main__":
-    scraper = None
     app.run(debug=True)

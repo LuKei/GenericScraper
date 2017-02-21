@@ -22,8 +22,7 @@ class ScraperTest(unittest.TestCase):
 
         datasources = [datasource1, datasource2, datasource3, datasource4, datasource5, datasource6, datasource7]
         scraper = Scraper(dbAccess)
-        scraper.scrapeDatasource(datasource2)
-        #scraper.scrapeDatasources(datasources)
+        scraper._scrapeDatasource(datasource1)
 
 
     def createBundesfinanzministeriumDatasource(self):
@@ -37,7 +36,7 @@ class ScraperTest(unittest.TestCase):
         listItemIdentifier.addInnermostIdentifier(HtmlIdentifier("li", "result-list-entry"))
         listItemIdentifier.addInnermostIdentifier(HtmlIdentifier("div", "listenteaser-wrapper"))
         listItemIdentifier.addInnermostIdentifier(HtmlIdentifier("div", "teaser listenteaser teaser-publication"))
-        listItemIdentifier.addInnermostIdentifier(HtmlIdentifier("div", "listenteaser-text  no-img "))
+        listItemIdentifier.addInnermostIdentifier(HtmlIdentifier("div", "listenteaser-text no-img "))
         listItemIdentifier.addInnermostIdentifier(HtmlIdentifier("h3"))
         listItemIdentifier.addInnermostIdentifier(HtmlIdentifier("a", "pbhandout"))
 

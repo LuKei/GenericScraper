@@ -1,43 +1,52 @@
 from Document import Document
 from HtmlIdentifier import IdentifierType
 from Datasource import DatasourceType
+from DatabaseAccess import DatabaseAccess
 import bs4 as bs
 import urllib.request
 import os
 import re
+import threading
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 
+lock = threading.Lock()
+
+
 class Scraper:
 
-    def __init__(self, dbAccess):
-        self.dbAccess = dbAccess
-        self.isRunning = False
+    threads = []
 
-    def scrapeDatasources(self, datasources):
-        for datasource in datasources:
-            self.scrapeDatasource(datasource)
+    @staticmethod
+    def startScrapingDatasource(datasource):
+        datasourceAlreadyBeingScraped = False
+
+        for thread in Scraper.threads:
+            if datasource.name in thread.name:
+                print("datasource is already being scraped right now!")
+                return None
+
+        newThread = threading.Thread(target=Scraper._scrapeDatasource, args=(datasource, DatabaseAccess()), name="Thread-" + datasource.name)
+        newThread.daemon = True
+        Scraper.threads.append(newThread)
+        newThread.start()
 
 
-    def scrapeDatasource(self, datasource):
-
-        isRunning = True
+    @staticmethod
+    def _scrapeDatasource(datasource, dbAccess):
 
         #Variablen für logging
         scrapedDocuments = 0
         sameDocument = 0
         noDownloadlink = 0
 
-
-
-
-        if not self.dbAccess.datasourceExists(datasource.name):
-            self.dbAccess.addDatasource(datasource)
-
-        self.dbAccess.commit()
+        with lock:
+            if not dbAccess.datasourceExists(datasource.name):
+                dbAccess.addDatasource(datasource)
+                dbAccess.commit()
 
         isUsingAjax = datasource.isUsingAjax
 
@@ -52,7 +61,7 @@ class Scraper:
 
 
 
-        folderPath = "documents_" + datasource.name
+        folderPath = os.path.expanduser(r"~\Desktop\\") + "documents_" + datasource.name
         if not os.path.exists(folderPath):
             # Ordner für .pdfs anlegen, falls noch nicht vorhanden
             os.makedirs(folderPath)
@@ -92,7 +101,7 @@ class Scraper:
 
 
             # alle ListItems durchlaufen
-            for li in self._getInnerItemsFromSoup(soup, listItemIdentifier):
+            for li in Scraper._getInnerItemsFromSoup(soup, listItemIdentifier):
 
                 i += 1
                 print(i)
@@ -109,7 +118,7 @@ class Scraper:
                 soup2 = bs.BeautifulSoup(source2, "lxml")
 
                 if titleIdentifier is not None:
-                    documentTitleItems = self._getInnerItemsFromSoup(soup2, titleIdentifier)
+                    documentTitleItems = Scraper._getInnerItemsFromSoup(soup2, titleIdentifier)
                     if len(documentTitleItems) > 0:
                         document.title = documentTitleItems[0].text.strip()
                     else:
@@ -118,36 +127,35 @@ class Scraper:
                     document.title = li.text.strip()
 
                 if subTitleIdentifier is not None:
-                    subTitleItems = self._getInnerItemsFromSoup(soup2, subTitleIdentifier)
+                    subTitleItems = Scraper._getInnerItemsFromSoup(soup2, subTitleIdentifier)
                     if len(subTitleItems) > 0:
                         document.title += subTitleItems[0].text.strip()
 
                 if dateIdentifier is not None:
-                    dateItems = self._getInnerItemsFromSoup(soup2, dateIdentifier)
+                    dateItems = Scraper._getInnerItemsFromSoup(soup2, dateIdentifier)
                     if len(dateItems) > 0:
                         document.date = dateItems[0].text
-
-                if self.dbAccess.documentExists(document.title, datasource.name):
-                    # Wenn Gesetzestext bereits in der Db: neuere Version verwenden.
-                    # Wenn kein Datum gescraped werden kann -> überspringen
-                    if document.date is not None:
-                        documentInDb = self.dbAccess.getDocument(document.title, datasource)
-                        if documentInDb.date < document.date:
-                            self.dbAccess.removeDocument(documentInDb.title, datasource)
+                with lock:
+                    if dbAccess.documentExists(document.title, datasource.name):
+                        # Wenn Gesetzestext bereits in der Db: neuere Version verwenden.
+                        # Wenn kein Datum gescraped werden kann -> überspringen
+                        documentInDb = dbAccess.getDocument(document.title, datasource)
+                        if document.date is not None and documentInDb is not None:
+                            if documentInDb.date is None or documentInDb.date < document.date:
+                                dbAccess.removeDocument(documentInDb.title, datasource)
+                            else:
+                                sameDocument += 1
+                                continue
                         else:
                             sameDocument += 1
                             continue
 
-                    else:
-                        sameDocument += 1
-                        continue
-
                 if downloadLinkIdentifier is None:
                     # TODO
                     # als xml speichern
-                    content = self._getInnerItemsFromSoup(soup, documentContentIdentifier)[0].text
+                    content = Scraper._getInnerItemsFromSoup(soup, documentContentIdentifier)[0].text
                 else:
-                    downloadLinkItems = self._getInnerItemsFromSoup(soup2, downloadLinkIdentifier)
+                    downloadLinkItems = Scraper._getInnerItemsFromSoup(soup2, downloadLinkIdentifier)
 
                     if len(downloadLinkItems) == 0:
                         # TODO: mehrere DownloadLinks zulassen?
@@ -157,25 +165,26 @@ class Scraper:
 
                     downloadLink = downloadLinkItems[0].get("href")
                     downloadResponse = Scraper.openLinkNonAjax(downloadLink, datasource)
-                    if downloadResponse is not None:
-                        document.url = downloadResponse.url
+                    with lock:
+                        if downloadResponse is not None:
+                            document.url = downloadResponse.url
 
-                        documentId = self.dbAccess.addDocument(document, datasource)
+                            documentId = dbAccess.addDocument(document, datasource)
 
-                        documentPath = folderPath + "/" + str(documentId) + ".pdf"
+                            documentPath = folderPath + "/" + str(documentId) + ".pdf"
 
-                        urllib.request.urlretrieve(downloadResponse.url, documentPath)
+                            urllib.request.urlretrieve(downloadResponse.url, documentPath)
 
-                        document.filepath = documentPath
+                            document.filepath = documentPath
 
-                        self.dbAccess.setDocumentFilePath(documentId, documentPath)
+                            dbAccess.setDocumentFilePath(documentId, documentPath)
 
-                        self.dbAccess.commit()
+                            dbAccess.commit()
 
                 scrapedDocuments += 1
 
 
-            paginationItems = self._getInnerItemsFromSoup(soup, nextPageIdentifier)
+            paginationItems = Scraper._getInnerItemsFromSoup(soup, nextPageIdentifier)
             if len(paginationItems) == 0:
                 break
             else:
@@ -198,7 +207,6 @@ class Scraper:
         print("Übersprungen wegen selben Namens: " + str(sameDocument))
         print("Übersprungen, weil kein Download-Link gefunden wurde:" + str(noDownloadlink))
 
-        isRunning = False
 
 
     @staticmethod
@@ -217,7 +225,6 @@ class Scraper:
         driver.get(link)
 
         return driver.page_source
-
 
 
 
@@ -245,12 +252,13 @@ class Scraper:
 
 
 
-    def _getInnerItemsFromSoup(self, soup, topIdentifier):
+    @staticmethod
+    def _getInnerItemsFromSoup(soup, topIdentifier):
 
         items = []
         if topIdentifier.class_ is None:
             #items = soup.find_all(topIdentifier.tagName, attrs=topIdentifier.getAdditionalAttributesDict())
-            items = soup.find_all(lambda tag: self._matchTag(tag, topIdentifier))
+            items = soup.find_all(lambda tag: Scraper._matchTag(tag, topIdentifier))
         else:
             classes = topIdentifier.class_.split(" ")
             cssSelector = topIdentifier.tagName
@@ -261,16 +269,18 @@ class Scraper:
         if topIdentifier.innerIdentifier is None:
             return items
         else:
-            return self._getInnerItemsFromItems(items, topIdentifier.innerIdentifier)
+            return Scraper._getInnerItemsFromItems(items, topIdentifier.innerIdentifier)
 
 
-    def _getInnerItemsFromItems(self, items, identifier):
+
+    @staticmethod
+    def _getInnerItemsFromItems(items, identifier):
 
         innerItems = []
         for item in items:
             if identifier.class_ is None:
                 #innerItems += item.find_all(identifier.tagName, attrs=identifier.getAdditionalAttributesDict())
-                innerItems += item.find_all(lambda tag: self._matchTag(tag, identifier))
+                innerItems += item.find_all(lambda tag: Scraper._matchTag(tag, identifier))
             else:
                 classes = identifier.class_.split(" ")
                 cssSelector = identifier.tagName
@@ -282,11 +292,12 @@ class Scraper:
         if identifier.innerIdentifier is None:
             return innerItems
         else:
-            return self._getInnerItemsFromItems(innerItems, identifier.innerIdentifier)
+            return Scraper._getInnerItemsFromItems(innerItems, identifier.innerIdentifier)
 
 
 
-    def _matchTag(self, tag, identifier):
+    @staticmethod
+    def _matchTag(tag, identifier):
         if tag.name != identifier.tagName:
             return False
 

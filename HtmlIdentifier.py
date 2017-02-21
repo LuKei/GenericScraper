@@ -6,6 +6,8 @@ class HtmlIdentifier:
     def __init__(self, tagName, class_=None, type_=None, additionalAttributes = None):
         self.tagName = tagName
         self.class_ = class_
+        if class_ == "":
+            self.class_ = None
         self.type_ = type_
         if type_ is None:
             self.type_ = IdentifierType.NONE
