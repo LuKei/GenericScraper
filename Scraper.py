@@ -13,7 +13,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 
-lock = threading.Lock()
+
 
 
 class Scraper:
@@ -43,7 +43,7 @@ class Scraper:
         sameDocument = 0
         noDownloadlink = 0
 
-        with lock:
+        with DatabaseAccess.lock:
             if not dbAccess.datasourceExists(datasource.name):
                 dbAccess.addDatasource(datasource)
                 dbAccess.commit()
@@ -135,7 +135,8 @@ class Scraper:
                     dateItems = Scraper._getInnerItemsFromSoup(soup2, dateIdentifier)
                     if len(dateItems) > 0:
                         document.date = dateItems[0].text
-                with lock:
+
+                with DatabaseAccess.lock:
                     if dbAccess.documentExists(document.title, datasource.name):
                         # Wenn Gesetzestext bereits in der Db: neuere Version verwenden.
                         # Wenn kein Datum gescraped werden kann -> überspringen
@@ -143,6 +144,7 @@ class Scraper:
                         if document.date is not None and documentInDb is not None:
                             if documentInDb.date is None or documentInDb.date < document.date:
                                 dbAccess.removeDocument(documentInDb.title, datasource)
+                                dbAccess.commit()
                             else:
                                 sameDocument += 1
                                 continue
@@ -165,7 +167,7 @@ class Scraper:
 
                     downloadLink = downloadLinkItems[0].get("href")
                     downloadResponse = Scraper.openLinkNonAjax(downloadLink, datasource)
-                    with lock:
+                    with DatabaseAccess.lock:
                         if downloadResponse is not None:
                             document.url = downloadResponse.url
 

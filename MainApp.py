@@ -1,24 +1,25 @@
 from flask import Flask, render_template, g, flash, request, url_for, redirect
 from DatabaseAccess import DatabaseAccess
-from Datasource import Datasource, DatasourceType
+from Datasource import Datasource
 from HtmlIdentifier import HtmlIdentifier, HtmlAttribute, IdentifierType
 from Scraper import Scraper
-import os
 
 app = Flask(__name__)
-
-latestType = IdentifierType.NEXTPAGE.value #Dient dazu, den als letzten ausgewählten Typ beim hinzufügen eines HtmlIdentifiers zu speichern
+latestType = IdentifierType.NEXTPAGE.value
 
 @app.route("/")
 def showMain():
-    return render_template("main.html", datasources=getDbAccess().getDatasources())
+    with DatabaseAccess.lock:
+        datasources = getDbAccess().getDatasources()
+        return render_template("main.html", datasources=datasources)
 
 
 
 @app.route("/datasources/<name>/scrape/")
 def scrapeDatasource(name):
+    with DatabaseAccess.lock:
+        datasource = getDbAccess().getDatasource(name=name)
 
-    datasource = getDbAccess().getDatasource(name=name)
     Scraper.startScrapingDatasource(datasource)
 
     return redirect(url_for("showMain"))
@@ -33,15 +34,17 @@ def addDatasource():
             url = request.form.get("url")
             isUsingAjax =  "isUsingAjax" in request.form
 
-            getDbAccess().addDatasource(Datasource(name, url, isUsingAjax=isUsingAjax))
-            getDbAccess().commit()
+            with DatabaseAccess.lock:
+                getDbAccess().addDatasource(Datasource(name, url, isUsingAjax=isUsingAjax))
+                getDbAccess().commit()
 
             return redirect(url_for("showMain"))
 
         return render_template("addDatasource.html")
 
     except Exception as e:
-        getDbAccess().rollback()
+        with DatabaseAccess.lock:
+            getDbAccess().rollback()
         return render_template("addDatasource.html", error="Error")
 
 
@@ -54,7 +57,8 @@ def viewDatabase():
 
 @app.route("/datasources/<name>/identifiers/")
 def showHtmlIdentfiers(name):
-    datasource = getDbAccess().getDatasource(name)
+    with DatabaseAccess.lock:
+        datasource = getDbAccess().getDatasource(name)
 
     identifiersDict = {}
     for type in IdentifierType:
@@ -69,7 +73,8 @@ def showHtmlIdentfiers(name):
 
 @app.route("/datasources/<name>/addIdentifier/", methods=["GET", "POST"])
 @app.route("/datasources/<name>/addIdentifier/<int:defaultType>", methods=["GET", "POST"])
-def addHtmlIdentifier(name, defaultType=latestType):
+def addHtmlIdentifier(name, defaultType=-1):
+    global latestType
     try:
         if request.method == "POST":
             tagName = request.form.get("tagName")
@@ -94,18 +99,22 @@ def addHtmlIdentifier(name, defaultType=latestType):
 
             htmlIdentifier = HtmlIdentifier(tagName, class_, type_, attrs)
 
-            getDbAccess().addIdentifierToDatasource(name, htmlIdentifier)
-            getDbAccess().commit()
+            with DatabaseAccess.lock:
+                getDbAccess().addIdentifierToDatasource(name, htmlIdentifier)
+                getDbAccess().commit()
 
-            global latestType
             latestType = type_.value
             return redirect(url_for("showMain"))
 
-        return render_template("addIdentifier.html", datasource=getDbAccess().getDatasource(name), types=IdentifierType, defaultType=defaultType)
+        if defaultType == -1:
+            defaultType = latestType
+        with DatabaseAccess.lock:
+            return render_template("addIdentifier.html", datasource=getDbAccess().getDatasource(name), types=IdentifierType, defaultType=defaultType)
 
     except Exception as e:
-        getDbAccess().rollback()
-        return render_template("addIdentifier.html", datasource=getDbAccess().getDatasource(name), types=IdentifierType, error="Error")
+        with DatabaseAccess.lock:
+            getDbAccess().rollback()
+            return render_template("addIdentifier.html", datasource=getDbAccess().getDatasource(name), types=IdentifierType, error="Error")
 
 
 
@@ -113,7 +122,6 @@ def getDbAccess():
     if not hasattr(g, "dbAccess"):
         g.dbAccess = DatabaseAccess()
     return g.dbAccess
-
 
 
 @app.teardown_appcontext

@@ -3,11 +3,12 @@ import os
 from Datasource import Datasource
 from Document import Document
 from HtmlIdentifier import HtmlIdentifier, IdentifierType, HtmlAttribute
-
+import threading
 
 class DatabaseAccess:
 
     defaultDbPath = os.path.expanduser(r"~\Desktop\ScraperDb")
+    lock = threading.Lock()
 
     def __init__(self, filename=defaultDbPath):
         self.filename = filename
@@ -204,14 +205,14 @@ class DatabaseAccess:
             cursor.execute("SELECT id, name, url, is_using_ajax FROM datasources WHERE name = ?", (name,))
             datasourceRow = cursor.fetchone()
 
-            cursor.execute("SELECT tag_name, class, type, innerIdentifier, isTopIdentifier FROM html_identifier "
+            cursor.execute("SELECT id, tag_name, class, type, innerIdentifier, isTopIdentifier FROM html_identifier "
                            "WHERE datasource = ? AND isTopIdentifier = 1", (datasourceRow[0],))
             identifierRows = cursor.fetchall()
             identifiers = []
             for identifierRow in identifierRows:
-                identifier = HtmlIdentifier(identifierRow[0], identifierRow[1], IdentifierType(identifierRow[2]))
-                identifier.additionalAttributes = self._getHtmlAttributes(identifierId=identifierRow[3])
-                self._appendIdentifierRec(identifier, innerIdentifierId=identifierRow[3])
+                identifier = HtmlIdentifier(identifierRow[1], identifierRow[2], IdentifierType(identifierRow[3]))
+                identifier.additionalAttributes = self._getHtmlAttributes(identifierId=identifierRow[0])
+                self._appendIdentifierRec(identifier, innerIdentifierId=identifierRow[4])
                 identifiers.append(identifier)
 
             datasource = Datasource(datasourceRow[1], datasourceRow[2], identifiers, datasourceRow[3])
