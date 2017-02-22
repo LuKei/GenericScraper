@@ -157,7 +157,7 @@ class DatabaseAccessTest(unittest.TestCase):
 
     @staticmethod
     def createDbAccess():
-        return DatabaseAccess("test")
+        return DatabaseAccess("", "test")
 
 
     if __name__ == '__main__':

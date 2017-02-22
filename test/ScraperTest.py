@@ -21,8 +21,7 @@ class ScraperTest(unittest.TestCase):
 
 
         datasources = [datasource1, datasource2, datasource3, datasource4, datasource5, datasource6, datasource7]
-        scraper = Scraper(dbAccess)
-        scraper._scrapeDatasource(datasource1)
+        Scraper.scrapeDatasource(datasource5, dbAccess)
 
 
     def createBundesfinanzministeriumDatasource(self):

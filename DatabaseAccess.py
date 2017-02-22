@@ -7,12 +7,13 @@ import threading
 
 class DatabaseAccess:
 
-    defaultDbPath = os.path.expanduser(r"~\Desktop\ScraperDb")
+    defaultDbPath = os.path.expanduser(r"~\Desktop\\")
     lock = threading.Lock()
 
-    def __init__(self, filename=defaultDbPath):
+    def __init__(self, filePath=defaultDbPath, filename="ScraperDb"):
+        self.filePath = filePath
         self.filename = filename
-        self.connection = sqlite3.connect(filename + ".db",check_same_thread=False)
+        self.connection = sqlite3.connect(filePath + filename + ".db",check_same_thread=False)
         cursor = self.connection.cursor()
 
         cursor.execute("CREATE TABLE IF NOT EXISTS datasources(id INTEGER PRIMARY KEY, name TEXT NOT NULL, url TEXT NOT NULL,"

@@ -21,6 +21,7 @@ from selenium.webdriver.support import expected_conditions as EC
 class Scraper:
 
     threads = []
+    driver = None
 
     @staticmethod
     def startScrapingDatasource(datasource):
@@ -31,23 +32,20 @@ class Scraper:
                 print("datasource is already being scraped right now!")
                 return None
 
-        newThread = threading.Thread(target=Scraper._scrapeDatasource, args=(datasource, DatabaseAccess()), name="Thread-" + datasource.name)
+        newThread = threading.Thread(target=Scraper.scrapeDatasource, args=(datasource, DatabaseAccess()), name="Thread-" + datasource.name)
         newThread.daemon = True
         Scraper.threads.append(newThread)
         newThread.start()
 
 
     @staticmethod
-    def _scrapeDatasource(datasource, dbAccess):
+    def scrapeDatasource(datasource, dbAccess):
 
         #Variablen für logging
-        scrapedDocuments = 0
-        sameDocument = 0
-        noDownloadlink = 0
-        exceptionCaught = 0
+        scrapedDocuments, sameDocument, noDownloadlink, exceptionCaught = 0, 0, 0, 0
 
+        Scraper._writeToLog("Started Scraping: " + str(datetime.datetime.now().time()), datasource.name)
 
-        Scraper.writeToLog("Started Scraping: " + str(datetime.datetime.now().time()), datasource.name)
 
         with DatabaseAccess.lock:
             if not dbAccess.datasourceExists(datasource.name):
@@ -55,48 +53,15 @@ class Scraper:
                 dbAccess.commit()
 
         isUsingAjax = datasource.isUsingAjax
-
-        listItemIdentifier = datasource.getOutermostIdentifier(IdentifierType.LISTITEM)
-        titleIdentifier = datasource.getOutermostIdentifier(IdentifierType.DOCUMENTTITLE)
-        subTitleIdentifier = datasource.getOutermostIdentifier(IdentifierType.DOCUMENTSUBTITLE)
-        documentContentIdentifier = datasource.getOutermostIdentifier(IdentifierType.LEGALTEXTCONTENT)
-        downloadLinkIdentifier = datasource.getOutermostIdentifier(IdentifierType.DOWNLOADLINK)
-        nextPageIdentifier = datasource.getOutermostIdentifier(IdentifierType.NEXTPAGE)
-        dateIdentifier = datasource.getOutermostIdentifier(IdentifierType.DATEIDENTIFIER)
-        ajaxWaitIdentifier = datasource.getOutermostIdentifier(IdentifierType.AJAXWAIT)
+        identifierDict = Scraper._buildIdentifierDict(datasource)
 
 
-        folderPath = os.path.expanduser(r"~\Desktop\\") + "documents_" + datasource.name
+        folderPath = dbAccess.filePath + "documents_" + datasource.name
         if not os.path.exists(folderPath):
-            # Ordner für .pdfs anlegen, falls noch nicht vorhanden
-            os.makedirs(folderPath)
-
-        driver = None
-        if isUsingAjax:
-            driver = webdriver.Chrome()
-            driver.get(url=datasource.url)
-
-            xpathWaitString = "//" + ajaxWaitIdentifier.tagName + "["
-            if ajaxWaitIdentifier.class_ is not None:
-                xpathWaitString += "(@class=" + "\"" + ajaxWaitIdentifier.class_ + "\"" + ") and "
-            if ajaxWaitIdentifier.additionalAttributes is not None:
-                for attribute in ajaxWaitIdentifier.additionalAttributes:
-                    xpathWaitString += "(@" + attribute.name + "=" + "\"" + attribute.value + "\"" + ") and "
-            if (ajaxWaitIdentifier.class_ is not None) or (ajaxWaitIdentifier.additionalAttributes is not None):
-                xpathWaitString = xpathWaitString[0:len(xpathWaitString)-5]
-            xpathWaitString += "]"
-
-            if ajaxWaitIdentifier.class_ is None and ajaxWaitIdentifier.additionalAttributes is None:
-                xpathWaitString = xpathWaitString[0:len(xpathWaitString)-2]
+            os.makedirs(folderPath) # Ordner für .pdfs anlegen, falls noch nicht vorhanden
 
 
-            WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.XPATH, xpathWaitString)))
-
-            source = driver.page_source
-
-        else:
-            source = urllib.request.urlopen(datasource.url)
-
+        source = Scraper._getSourceForUrl(datasource.url, datasource.isUsingAjax, identifierDict.get(IdentifierType.AJAXWAIT, None))
         soup = bs.BeautifulSoup(source, "lxml")
 
         i = 0
@@ -104,47 +69,38 @@ class Scraper:
         while True:
 
             # alle ListItems durchlaufen
-            for li in Scraper._getInnerItemsFromSoup(soup, listItemIdentifier):
+            for li in Scraper._getInnerItemsFromSoup(soup, identifierDict[IdentifierType.LISTITEM]):
                 try:
                     i += 1
                     print(i)
 
                     document = Document(None, None, datasource, DatasourceType.GESETZESTEXTE, None, None)
 
-                    liLink = li.get("href")
 
-                    # if isUsingAjax:
-                    #     source2 = Scraper.openLinkAjax(liLink, datasource, driver)
-                    # else:
-                    source2 = Scraper.openLinkNonAjax(liLink, datasource)
-
-                    soup2 = bs.BeautifulSoup(source2, "lxml")
-
-                    if titleIdentifier is not None:
-                        documentTitleItems = Scraper._getInnerItemsFromSoup(soup2, titleIdentifier)
-                        if len(documentTitleItems) > 0:
-                            document.title = documentTitleItems[0].text.strip()
-                        else:
-                            document.title = li.text.strip()
-                    else:
+                    if IdentifierType.DOCUMENTTITLE in identifierDict:
+                        item = Scraper._getItemFromListItem(li, identifierDict[IdentifierType.DOCUMENTTITLE], datasource)
+                        if item is not None:
+                            document.title = item.text.strip()
+                    if document.title is None:
                         document.title = li.text.strip()
 
-                    if subTitleIdentifier is not None:
-                        subTitleItems = Scraper._getInnerItemsFromSoup(soup2, subTitleIdentifier)
-                        if len(subTitleItems) > 0:
-                            document.title += subTitleItems[0].text.strip()
 
-                    if dateIdentifier is not None:
-                        dateItems = Scraper._getInnerItemsFromSoup(soup2, dateIdentifier)
-                        if len(dateItems) > 0:
-                            document.date = dateItems[0].text
+                    if IdentifierType.DOCUMENTSUBTITLE in identifierDict:
+                        item = Scraper._getItemFromListItem(li, identifierDict[IdentifierType.DOCUMENTSUBTITLE], datasource)
+                        if item is not None:
+                            document.title += item.text.strip()
+
+                    if IdentifierType.DATEIDENTIFIER in identifierDict:
+                        item = Scraper._getItemFromListItem(li, identifierDict[IdentifierType.DATEIDENTIFIER], datasource)
+                        if item is not None:
+                            document.date = item.text.strip()
 
                     with DatabaseAccess.lock:
                         if dbAccess.documentExists(document.title, datasource.name):
                             # Wenn Gesetzestext bereits in der Db: neuere Version verwenden.
                             # Wenn kein Datum gescraped werden kann -> überspringen
                             documentInDb = dbAccess.getDocument(document.title, datasource)
-                            if document.date is not None and documentInDb is not None:
+                            if document.date is not None:
                                 if documentInDb.date is None or documentInDb.date < document.date:
                                     dbAccess.removeDocument(documentInDb.title, datasource)
                                     dbAccess.commit()
@@ -155,113 +111,131 @@ class Scraper:
                                 sameDocument += 1
                                 continue
 
-                    if downloadLinkIdentifier is None:
-                        # TODO
-                        # als xml speichern
-                        content = Scraper._getInnerItemsFromSoup(soup, documentContentIdentifier)[0].text
-                    else:
-                        downloadLinkItems = Scraper._getInnerItemsFromSoup(soup2, downloadLinkIdentifier)
+                    #TODO: xml download!?
 
-                        if len(downloadLinkItems) == 0:
+                    if IdentifierType.DOWNLOADLINK in identifierDict:
+                        item = Scraper._getItemFromListItem(li, identifierDict[IdentifierType.DOWNLOADLINK], datasource)
+                        if item is not None:
+                            downloadLink = item.get("href")
+                        else:
                             noDownloadlink += 1
                             continue
 
-
-                        downloadLink = downloadLinkItems[0].get("href")
-                        downloadResponse = Scraper.openLinkNonAjax(downloadLink, datasource)
+                        downloadResponse = Scraper._getSourceForUrl(Scraper._getCompleteLink(downloadLink, datasource), usingAjax=False)
                         with DatabaseAccess.lock:
                             if downloadResponse is not None:
                                 document.url = downloadResponse.url
-
                                 documentId = dbAccess.addDocument(document, datasource)
+                                document.filepath = folderPath + "/" + str(documentId) + ".pdf"
 
-                                documentPath = folderPath + "/" + str(documentId) + ".pdf"
+                                urllib.request.urlretrieve(downloadResponse.url, document.filepath)
 
-                                urllib.request.urlretrieve(downloadResponse.url, documentPath)
-
-                                document.filepath = documentPath
-
-                                dbAccess.setDocumentFilePath(documentId, documentPath)
-
+                                dbAccess.setDocumentFilePath(documentId, document.filepath)
                                 dbAccess.commit()
 
                     scrapedDocuments += 1
                 except Exception as e:
                     with DatabaseAccess.lock:
                         dbAccess.rollback()
-                    Scraper.writeToLog("Exception caught at index: " + i, datasource.name,
-                                       path=os.path.expanduser(r"~\Desktop\\") + "excLog_" + datasource.name + ".txt")
-                    traceback.print_exc(file=open(os.path.expanduser(r"~\Desktop\\") + "excLog_" + datasource.name + ".txt", "w+"))
+                    Scraper._writeToLog("Exception caught at index: " + i, datasource.name,
+                                        path=os.path.expanduser(r"~\Desktop\\") + "excLog_" + datasource.name + ".txt")
+                    traceback.print_exc(file=open(os.path.expanduser(r"~\Desktop\\") + "excLog_" + datasource.name + ".txt", "a+"))
 
 
 
-            paginationItems = Scraper._getInnerItemsFromSoup(soup, nextPageIdentifier)
-            if len(paginationItems) == 0:
+            items = Scraper._getInnerItemsFromSoup(soup, identifierDict[IdentifierType.NEXTPAGE])
+            if len(items) == 0:
                 break
             else:
-                nextPageLink = paginationItems[0].get("href")
+                nextPageLink = items[0].get("href")
                 if nextPageLink is None:
-                    nextPageLink = paginationItems[0].parent.get("href")
+                    nextPageLink = items[0].parent.get("href")
                 if nextPageLink is None:
                     break
-                if isUsingAjax:
-                    source = Scraper.openLinkAjax(nextPageLink, datasource, driver)
-                else:
-                    source = Scraper.openLinkNonAjax(nextPageLink, datasource)
+                source = Scraper._getSourceForUrl(Scraper._getCompleteLink(nextPageLink, datasource), datasource.isUsingAjax,
+                                                  identifierDict.get(IdentifierType.AJAXWAIT))
                 soup = bs.BeautifulSoup(source, "lxml")
 
-        if driver is not None:
-            driver.close()
+        if Scraper.driver is not None:
+            Scraper.driver.close()
 
-        Scraper.writeToLog("Finished Scraping: " + str(datetime.datetime.now().time()), datasource.name)
-        Scraper.writeToLog("Scraped documents: " + str(scrapedDocuments), datasource.name)
-        Scraper.writeToLog("Not scraped because of same name: " + str(sameDocument), datasource.name)
-        Scraper.writeToLog("Not scraped because download link was not found: " + str(noDownloadlink), datasource.name)
-        Scraper.writeToLog("Not scraped because an exception occured: " + str(exceptionCaught), datasource.name)
-        Scraper.writeToLog("/n/n/n", datasource.name)
+        Scraper._writeToLog("Finished Scraping: " + str(datetime.datetime.now().time()), datasource.name)
+        Scraper._writeToLog("Scraped documents: " + str(scrapedDocuments), datasource.name)
+        Scraper._writeToLog("Not scraped because of same name: " + str(sameDocument), datasource.name)
+        Scraper._writeToLog("Not scraped because download link was not found: " + str(noDownloadlink), datasource.name)
+        Scraper._writeToLog("Not scraped because an exception occured: " + str(exceptionCaught), datasource.name)
+        Scraper._writeToLog("/n/n/n", datasource.name)
 
-
-
-    @staticmethod
-    def openLinkAjax(link, datasource, driver):
-
-        if not re.match(r"\Ahttp", link):
-            # Wenn Link nicht mit http startet -> wahrscheinlich relativer Link
-            slashIndex = re.search(r"[^/]/[^/]", datasource.url).start() + 1
-            motherUrl = datasource.url[0:slashIndex]
-
-            # Sonder- und Trennzeichen am Anfang des Links entfernen
-            link = re.sub(r"\A(\/|\.)*", "", link)
-
-            link = motherUrl + "/" + link
-
-        driver.get(link)
-
-        return driver.page_source
 
 
 
     @staticmethod
-    def openLinkNonAjax(link, datasource):
+    def _getItemFromListItem(li, identifier, datasource):
+        #Zuerst im ListItem suchen
+        item = None
+        items = Scraper._getInnerItemsFromItems([li], identifier)
+        if items is not None and len(items) > 0:
+            item = items[0]
+        else:
+            #Wenn nichts im ListItem gefunden -> auf Seite des ListItems suchen
+            # if isUsingAjax:
+            #     source2 = Scraper.openLinkAjax(liLink, datasource, driver)
+            # else:
+            source = Scraper._getSourceForUrl(Scraper._getCompleteLink(li.get("href"), datasource), usingAjax=False)
+            soup = bs.BeautifulSoup(source, "lxml")
+            items = Scraper._getInnerItemsFromSoup(soup, identifier)
+            if items is not None and len(items) > 0:
+                item = items[0]
+
+        return item
+
+
+
+    @staticmethod
+    def _getSourceForUrl(url, usingAjax, ajaxWaitIdentifier=None):
+        if usingAjax:
+            if Scraper.driver is None:
+                Scraper.driver = webdriver.Chrome()
+            Scraper.driver.get(url=url)
+
+            xpathWaitString = "//" + ajaxWaitIdentifier.tagName + "["
+            if ajaxWaitIdentifier.class_ is not None:
+                xpathWaitString += "(@class=" + "\"" + ajaxWaitIdentifier.class_ + "\"" + ") and "
+            if ajaxWaitIdentifier.additionalAttributes is not None:
+                for attribute in ajaxWaitIdentifier.additionalAttributes:
+                    xpathWaitString += "(@" + attribute.name + "=" + "\"" + attribute.value + "\"" + ") and "
+            if (ajaxWaitIdentifier.class_ is not None) or (ajaxWaitIdentifier.additionalAttributes is not None):
+                xpathWaitString = xpathWaitString[0:len(xpathWaitString) - 5]
+            xpathWaitString += "]"
+
+            if ajaxWaitIdentifier.class_ is None and ajaxWaitIdentifier.additionalAttributes is None:
+                xpathWaitString = xpathWaitString[0:len(xpathWaitString) - 2]
+
+            WebDriverWait(Scraper.driver, 5).until(EC.presence_of_element_located((By.XPATH, xpathWaitString)))
+
+            source = Scraper.driver.page_source
+
+        else:
+            source = urllib.request.urlopen(url)
+
+        return source
+
+
+
+    @staticmethod
+    def _getCompleteLink(link, datasource):
 
         try:
-            response = urllib.request.urlopen(link)
+            source = urllib.request.urlopen(link)
+            return link
         except:
-            #Wenn Link nicht geöffnet werden kann -> wahrscheinlich relativer Link
+            # Wenn Link nicht geöffnet werden kann -> wahrscheinlich relativer Link
             slashIndex = re.search(r"[^/]/[^/]", datasource.url).start() + 1
             motherUrl = datasource.url[0:slashIndex]
-
-            #Sonder- und Trennzeichen am Anfang des Links entfernen
+            # Sonder- und Trennzeichen am Anfang des Links entfernen
             link = re.sub(r"\A(\/|\.)*", "", link)
-
             link = motherUrl + "/" + link
-            try:
-                #Wenn Link immer noch nicht geöffnet werden kann -> Fehler
-                response = urllib.request.urlopen(link)
-            except:
-                return None
-
-        return response
+            return link
 
 
 
@@ -334,10 +308,18 @@ class Scraper:
         return True
 
     @staticmethod
-    def writeToLog(text, datasourceName, path=None):
+    def _writeToLog(text, datasourceName, path=None):
         if path is None:
             path = os.path.expanduser(r"~\Desktop\\") + "log_" + datasourceName + ".txt"
-        with open(path, "w+") as logFile:
+        with open(path, "a+") as logFile:
             print(text, file=logFile)
         print(text)
+
+
+    @staticmethod
+    def _buildIdentifierDict(datasource):
+        dict = {}
+        for identifier in datasource.identifiers:
+            dict[identifier.type_] = identifier
+        return dict
 
