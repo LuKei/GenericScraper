@@ -80,11 +80,11 @@ def addHtmlIdentifier(name, defaultType=-1):
             tagName = request.form.get("tagName")
             class_ = request.form.get("class_")
             type_ = IdentifierType[request.form.get("type_")]
-            attr1 = HtmlAttribute(request.form.get("attr1Name"), request.form.get("attr1Val"))
-            attr2 = HtmlAttribute(request.form.get("attr2Name"), request.form.get("attr2Val"))
-            attr3 = HtmlAttribute(request.form.get("attr3Name"), request.form.get("attr3Val"))
-            attr4 = HtmlAttribute(request.form.get("attr4Name"), request.form.get("attr4Val"))
-            attr5 = HtmlAttribute(request.form.get("attr5Name"), request.form.get("attr5Val"))
+            attr1 = HtmlAttribute(request.form.get("attr1Name"), request.form.get("attr1Val"), "attr1exactMatch" in request.form)
+            attr2 = HtmlAttribute(request.form.get("attr2Name"), request.form.get("attr2Val"), "attr2exactMatch" in request.form)
+            attr3 = HtmlAttribute(request.form.get("attr3Name"), request.form.get("attr3Val"), "attr3exactMatch" in request.form)
+            attr4 = HtmlAttribute(request.form.get("attr4Name"), request.form.get("attr4Val"), "attr4exactMatch" in request.form)
+            attr5 = HtmlAttribute(request.form.get("attr5Name"), request.form.get("attr5Val"), "attr5exactMatch" in request.form)
             attrs = []
             if attr1.name != "":
                 attrs.append(attr1)

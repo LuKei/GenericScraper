@@ -4,6 +4,8 @@ from Datasource import DatasourceType
 from DatabaseAccess import DatabaseAccess
 import bs4 as bs
 import urllib.request
+import datetime
+import traceback
 import os
 import re
 import threading
@@ -42,6 +44,10 @@ class Scraper:
         scrapedDocuments = 0
         sameDocument = 0
         noDownloadlink = 0
+        exceptionCaught = 0
+
+
+        Scraper.writeToLog("Started Scraping: " + str(datetime.datetime.now().time()), datasource.name)
 
         with DatabaseAccess.lock:
             if not dbAccess.datasourceExists(datasource.name):
@@ -58,7 +64,6 @@ class Scraper:
         nextPageIdentifier = datasource.getOutermostIdentifier(IdentifierType.NEXTPAGE)
         dateIdentifier = datasource.getOutermostIdentifier(IdentifierType.DATEIDENTIFIER)
         ajaxWaitIdentifier = datasource.getOutermostIdentifier(IdentifierType.AJAXWAIT)
-
 
 
         folderPath = os.path.expanduser(r"~\Desktop\\") + "documents_" + datasource.name
@@ -98,92 +103,96 @@ class Scraper:
 
         while True:
 
-
-
             # alle ListItems durchlaufen
             for li in Scraper._getInnerItemsFromSoup(soup, listItemIdentifier):
+                try:
+                    i += 1
+                    print(i)
 
-                i += 1
-                print(i)
+                    document = Document(None, None, datasource, DatasourceType.GESETZESTEXTE, None, None)
 
-                document = Document(None, None, datasource, DatasourceType.GESETZESTEXTE, None, None)
+                    liLink = li.get("href")
 
-                liLink = li.get("href")
+                    # if isUsingAjax:
+                    #     source2 = Scraper.openLinkAjax(liLink, datasource, driver)
+                    # else:
+                    source2 = Scraper.openLinkNonAjax(liLink, datasource)
 
-                # if isUsingAjax:
-                #     source2 = Scraper.openLinkAjax(liLink, datasource, driver)
-                # else:
-                source2 = Scraper.openLinkNonAjax(liLink, datasource)
+                    soup2 = bs.BeautifulSoup(source2, "lxml")
 
-                soup2 = bs.BeautifulSoup(source2, "lxml")
-
-                if titleIdentifier is not None:
-                    documentTitleItems = Scraper._getInnerItemsFromSoup(soup2, titleIdentifier)
-                    if len(documentTitleItems) > 0:
-                        document.title = documentTitleItems[0].text.strip()
+                    if titleIdentifier is not None:
+                        documentTitleItems = Scraper._getInnerItemsFromSoup(soup2, titleIdentifier)
+                        if len(documentTitleItems) > 0:
+                            document.title = documentTitleItems[0].text.strip()
+                        else:
+                            document.title = li.text.strip()
                     else:
                         document.title = li.text.strip()
-                else:
-                    document.title = li.text.strip()
 
-                if subTitleIdentifier is not None:
-                    subTitleItems = Scraper._getInnerItemsFromSoup(soup2, subTitleIdentifier)
-                    if len(subTitleItems) > 0:
-                        document.title += subTitleItems[0].text.strip()
+                    if subTitleIdentifier is not None:
+                        subTitleItems = Scraper._getInnerItemsFromSoup(soup2, subTitleIdentifier)
+                        if len(subTitleItems) > 0:
+                            document.title += subTitleItems[0].text.strip()
 
-                if dateIdentifier is not None:
-                    dateItems = Scraper._getInnerItemsFromSoup(soup2, dateIdentifier)
-                    if len(dateItems) > 0:
-                        document.date = dateItems[0].text
+                    if dateIdentifier is not None:
+                        dateItems = Scraper._getInnerItemsFromSoup(soup2, dateIdentifier)
+                        if len(dateItems) > 0:
+                            document.date = dateItems[0].text
 
-                with DatabaseAccess.lock:
-                    if dbAccess.documentExists(document.title, datasource.name):
-                        # Wenn Gesetzestext bereits in der Db: neuere Version verwenden.
-                        # Wenn kein Datum gescraped werden kann -> überspringen
-                        documentInDb = dbAccess.getDocument(document.title, datasource)
-                        if document.date is not None and documentInDb is not None:
-                            if documentInDb.date is None or documentInDb.date < document.date:
-                                dbAccess.removeDocument(documentInDb.title, datasource)
-                                dbAccess.commit()
+                    with DatabaseAccess.lock:
+                        if dbAccess.documentExists(document.title, datasource.name):
+                            # Wenn Gesetzestext bereits in der Db: neuere Version verwenden.
+                            # Wenn kein Datum gescraped werden kann -> überspringen
+                            documentInDb = dbAccess.getDocument(document.title, datasource)
+                            if document.date is not None and documentInDb is not None:
+                                if documentInDb.date is None or documentInDb.date < document.date:
+                                    dbAccess.removeDocument(documentInDb.title, datasource)
+                                    dbAccess.commit()
+                                else:
+                                    sameDocument += 1
+                                    continue
                             else:
                                 sameDocument += 1
                                 continue
-                        else:
-                            sameDocument += 1
+
+                    if downloadLinkIdentifier is None:
+                        # TODO
+                        # als xml speichern
+                        content = Scraper._getInnerItemsFromSoup(soup, documentContentIdentifier)[0].text
+                    else:
+                        downloadLinkItems = Scraper._getInnerItemsFromSoup(soup2, downloadLinkIdentifier)
+
+                        if len(downloadLinkItems) == 0:
+                            noDownloadlink += 1
                             continue
 
-                if downloadLinkIdentifier is None:
-                    # TODO
-                    # als xml speichern
-                    content = Scraper._getInnerItemsFromSoup(soup, documentContentIdentifier)[0].text
-                else:
-                    downloadLinkItems = Scraper._getInnerItemsFromSoup(soup2, downloadLinkIdentifier)
 
-                    if len(downloadLinkItems) == 0:
-                        # TODO: mehrere DownloadLinks zulassen?
-                        noDownloadlink += 1
-                        continue
+                        downloadLink = downloadLinkItems[0].get("href")
+                        downloadResponse = Scraper.openLinkNonAjax(downloadLink, datasource)
+                        with DatabaseAccess.lock:
+                            if downloadResponse is not None:
+                                document.url = downloadResponse.url
 
+                                documentId = dbAccess.addDocument(document, datasource)
 
-                    downloadLink = downloadLinkItems[0].get("href")
-                    downloadResponse = Scraper.openLinkNonAjax(downloadLink, datasource)
+                                documentPath = folderPath + "/" + str(documentId) + ".pdf"
+
+                                urllib.request.urlretrieve(downloadResponse.url, documentPath)
+
+                                document.filepath = documentPath
+
+                                dbAccess.setDocumentFilePath(documentId, documentPath)
+
+                                dbAccess.commit()
+
+                    scrapedDocuments += 1
+                except Exception as e:
                     with DatabaseAccess.lock:
-                        if downloadResponse is not None:
-                            document.url = downloadResponse.url
+                        dbAccess.rollback()
+                    Scraper.writeToLog("Exception caught at index: " + i, datasource.name,
+                                       path=os.path.expanduser(r"~\Desktop\\") + "excLog_" + datasource.name + ".txt")
+                    traceback.print_exc(file=open(os.path.expanduser(r"~\Desktop\\") + "excLog_" + datasource.name + ".txt", "w+"))
 
-                            documentId = dbAccess.addDocument(document, datasource)
-
-                            documentPath = folderPath + "/" + str(documentId) + ".pdf"
-
-                            urllib.request.urlretrieve(downloadResponse.url, documentPath)
-
-                            document.filepath = documentPath
-
-                            dbAccess.setDocumentFilePath(documentId, documentPath)
-
-                            dbAccess.commit()
-
-                scrapedDocuments += 1
 
 
             paginationItems = Scraper._getInnerItemsFromSoup(soup, nextPageIdentifier)
@@ -204,10 +213,12 @@ class Scraper:
         if driver is not None:
             driver.close()
 
-        print("Wesbeite: " + datasource.name)
-        print("Erfasste Dokumente: " + str(scrapedDocuments))
-        print("Übersprungen wegen selben Namens: " + str(sameDocument))
-        print("Übersprungen, weil kein Download-Link gefunden wurde:" + str(noDownloadlink))
+        Scraper.writeToLog("Finished Scraping: " + str(datetime.datetime.now().time()), datasource.name)
+        Scraper.writeToLog("Scraped documents: " + str(scrapedDocuments), datasource.name)
+        Scraper.writeToLog("Not scraped because of same name: " + str(sameDocument), datasource.name)
+        Scraper.writeToLog("Not scraped because download link was not found: " + str(noDownloadlink), datasource.name)
+        Scraper.writeToLog("Not scraped because an exception occured: " + str(exceptionCaught), datasource.name)
+        Scraper.writeToLog("/n/n/n", datasource.name)
 
 
 
@@ -321,3 +332,12 @@ class Scraper:
                         return False
 
         return True
+
+    @staticmethod
+    def writeToLog(text, datasourceName, path=None):
+        if path is None:
+            path = os.path.expanduser(r"~\Desktop\\") + "log_" + datasourceName + ".txt"
+        with open(path, "w+") as logFile:
+            print(text, file=logFile)
+        print(text)
+

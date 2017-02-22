@@ -3,7 +3,7 @@ from enum import Enum
 
 class HtmlIdentifier:
 
-    def __init__(self, tagName, class_=None, type_=None, additionalAttributes = None):
+    def __init__(self, tagName, class_=None, type_=None, additionalAttributes=None):
         self.tagName = tagName
         self.class_ = class_
         if class_ == "":

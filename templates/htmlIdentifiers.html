@@ -11,6 +11,8 @@
 <div class="tab-content">
     {% for i in range(1, types|length) %}
         <div class="tab-pane {% if i==1 %}active{% endif %}" id="{{ i }}">
+            <a href="{{'/datasources/' + datasource.name + '/addIdentifier/' + i|string}}" class="btn btn-default">Add Identifier</a>
+            <br><br>
             {% for identifier in identifiersDict[types(i)] %}
                 <ul class="list-group">
                 <li class="list-group-item">
@@ -25,7 +27,6 @@
                 </ul>
             {% endfor %}
             </ul>
-            <a href="{{'/datasources/' + datasource.name + '/addIdentifier/' + i|string}}" class="btn btn-default">Add Identifier</a>
         </div>
     {% endfor %}
 </div>

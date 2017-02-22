@@ -62,7 +62,7 @@ class ScraperTest(unittest.TestCase):
                                 identifiers=identifiers)
         return datasource
 
-    # Bundesministerium für Wirtschaft und Energie
+
     def createBMWiDatasource(self):
 
         nextPageIdentifier = HtmlIdentifier("div", "container", IdentifierType.NEXTPAGE)
@@ -220,7 +220,7 @@ class ScraperTest(unittest.TestCase):
     def createCuriaDatasource(self):
         nextPageIdentifier = HtmlIdentifier("div", "pagination", IdentifierType.NEXTPAGE)
         nextPageIdentifier.addInnermostIdentifier(HtmlIdentifier("a"))
-        nextPageIdentifier.addInnermostIdentifier(HtmlIdentifier("img", additionalAttributes=[HtmlAttribute("title", "Letztes Dokument anzeigen")]))
+        nextPageIdentifier.addInnermostIdentifier(HtmlIdentifier("img", additionalAttributes=[HtmlAttribute("title", "Nächstes Dokument anzeigen")]))
 
         listItemIdentifier = HtmlIdentifier("table", "detail_table_douments", IdentifierType.LISTITEM)
         listItemIdentifier.addInnermostIdentifier(HtmlIdentifier("tbody"))
