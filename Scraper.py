@@ -1,5 +1,5 @@
 from Document import Document
-from HtmlIdentifier import IdentifierType
+from HtmlIdentifier import HtmlIdentifier, IdentifierType
 from Datasource import DatasourceType
 from DatabaseAccess import DatabaseAccess
 import bs4 as bs
@@ -8,7 +8,6 @@ import urllib.parse
 import datetime
 import traceback
 import os
-#import pdfkit
 import threading
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -79,7 +78,7 @@ class Scraper:
 
 
                     if IdentifierType.DOCUMENTTITLE in identifierDict:
-                        item = Scraper._getItemFromListItem(li, identifierDict[IdentifierType.DOCUMENTTITLE], datasource)
+                        item = Scraper._getItemFromListItem(li, identifierDict[IdentifierType.DOCUMENTTITLE], datasource, soup)
                         if item is not None:
                             document.title = item.text.strip()
                     if document.title is None:
@@ -87,12 +86,12 @@ class Scraper:
 
 
                     if IdentifierType.DOCUMENTSUBTITLE in identifierDict:
-                        item = Scraper._getItemFromListItem(li, identifierDict[IdentifierType.DOCUMENTSUBTITLE], datasource)
+                        item = Scraper._getItemFromListItem(li, identifierDict[IdentifierType.DOCUMENTSUBTITLE], datasource, soup)
                         if item is not None:
                             document.title += item.text.strip()
 
                     if IdentifierType.DATEIDENTIFIER in identifierDict:
-                        item = Scraper._getItemFromListItem(li, identifierDict[IdentifierType.DATEIDENTIFIER], datasource)
+                        item = Scraper._getItemFromListItem(li, identifierDict[IdentifierType.DATEIDENTIFIER], datasource, soup)
                         if item is not None:
                             document.date = item.text.strip()
 
@@ -113,27 +112,29 @@ class Scraper:
                                 continue
 
                     if IdentifierType.DOWNLOADLINK in identifierDict:
-                        item = Scraper._getItemFromListItem(li, identifierDict[IdentifierType.DOWNLOADLINK], datasource)
+                        item = Scraper._getItemFromListItem(li, identifierDict[IdentifierType.DOWNLOADLINK], datasource, soup)
                         if item is not None:
                             downloadLink = item.get("href")
                         else:
                             noDownloadlink += 1
                             continue
 
-                        downloadResponse = Scraper._getSourceForUrl(urllib.parse.urljoin(datasource.url, downloadLink), usingAjax=False)
-                        with DatabaseAccess.lock:
-                            if downloadResponse is not None:
-                                document.url = downloadResponse.url
+                        downloadResponse = Scraper._getSourceForUrl(Scraper._getFullLink(datasource.url, downloadLink, soup), usingAjax=False)
+
+                        if downloadResponse is not None:
+                            document.url = downloadResponse.url
+                            with DatabaseAccess.lock:
                                 documentId = dbAccess.addDocument(document, datasource)
-                                document.filepath = folderPath + "/" + str(documentId)
+                                dbAccess.commit()
+                            document.filepath = folderPath + "/" + str(documentId)
 
-                                if downloadResponse.info().get_content_subtype() == "html":
-                                    # options = {"quiet":""}
-                                    # pdfkit.from_url(downloadResponse.url, document.filepath, options=options)
-                                    urllib.request.urlretrieve(downloadResponse.url, document.filepath + ".html")
-                                else:
-                                    urllib.request.urlretrieve(downloadResponse.url, document.filepath + ".pdf")
-
+                            if downloadResponse.info().get_content_subtype() == "html":
+                                # options = {"quiet":""}
+                                # pdfkit.from_url(downloadResponse.url, document.filepath, options=options)
+                                urllib.request.urlretrieve(downloadResponse.url, document.filepath + ".html")
+                            else:
+                                urllib.request.urlretrieve(downloadResponse.url, document.filepath + ".pdf")
+                            with DatabaseAccess.lock:
                                 dbAccess.setDocumentFilePath(documentId, document.filepath)
                                 dbAccess.commit()
 
@@ -141,7 +142,7 @@ class Scraper:
                 except Exception as e:
                     with DatabaseAccess.lock:
                         dbAccess.rollback()
-                    Scraper._writeToLog("Exception caught at index: " + i, datasource.name,
+                    Scraper._writeToLog("Exception caught at index: " + str(i), datasource.name,
                                         path=os.path.expanduser(r"~\Desktop\\") + "excLog_" + datasource.name + ".txt")
                     traceback.print_exc(file=open(os.path.expanduser(r"~\Desktop\\") + "excLog_" + datasource.name + ".txt", "a+"))
 
@@ -156,7 +157,7 @@ class Scraper:
                     nextPageLink = items[0].parent.get("href")
                 if nextPageLink is None:
                     break
-                source = Scraper._getSourceForUrl(urllib.parse.urljoin(datasource.url, nextPageLink), datasource.isUsingAjax,
+                source = Scraper._getSourceForUrl(Scraper._getFullLink(datasource.url, nextPageLink, soup), datasource.isUsingAjax,
                                                   identifierDict.get(IdentifierType.AJAXWAIT))
                 soup = bs.BeautifulSoup(source, "lxml")
 
@@ -174,7 +175,7 @@ class Scraper:
 
 
     @staticmethod
-    def _getItemFromListItem(li, identifier, datasource):
+    def _getItemFromListItem(li, identifier, datasource, soup):
         #Zuerst im ListItem suchen
         item = None
         items = Scraper._getInnerItemsFromItems([li], identifier)
@@ -182,10 +183,7 @@ class Scraper:
             item = items[0]
         else:
             #Wenn nichts im ListItem gefunden -> auf Seite des ListItems suchen
-            # if isUsingAjax:
-            #     source2 = Scraper.openLinkAjax(liLink, datasource, driver)
-            # else:
-            source = Scraper._getSourceForUrl(urllib.parse.urljoin(datasource.url, li.get("href")), usingAjax=False)
+            source = Scraper._getSourceForUrl(Scraper._getFullLink(datasource.url, li.get("href"), soup), usingAjax=False)
             soup = bs.BeautifulSoup(source, "lxml")
             items = Scraper._getInnerItemsFromSoup(soup, identifier)
             if items is not None and len(items) > 0:
@@ -227,23 +225,13 @@ class Scraper:
 
 
     @staticmethod
-    def _getFullLink(link, datasource):
-        fullLink = urllib.parse.urljoin(datasource.url, link)
+    def _getFullLink(url, link, soup):
+        baseItems = Scraper._getInnerItemsFromSoup(soup, HtmlIdentifier("base"))
+        if len(baseItems) > 0:
+            url = baseItems[0].get("href")
+
+        fullLink = urllib.parse.urljoin(url, link)
         return fullLink
-
-
-
-        # try:
-        #     source = urllib.request.urlopen(link)
-        #     return link
-        # except:
-        #     # Wenn Link nicht geöffnet werden kann -> wahrscheinlich relativer Link
-        #     slashIndex = re.search(r"[^/]/[^/]", datasource.url).start() + 1
-        #     motherUrl = datasource.url[0:slashIndex]
-        #     # Sonder- und Trennzeichen am Anfang des Links entfernen
-        #     link = re.sub(r"\A(\/|\.)*", "", link)
-        #     link = motherUrl + "/" + link
-        #     return link
 
 
 
