@@ -4,10 +4,11 @@ from Datasource import DatasourceType
 from DatabaseAccess import DatabaseAccess
 import bs4 as bs
 import urllib.request
+import urllib.parse
 import datetime
 import traceback
 import os
-import re
+#import pdfkit
 import threading
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -111,8 +112,6 @@ class Scraper:
                                 sameDocument += 1
                                 continue
 
-                    #TODO: xml download!?
-
                     if IdentifierType.DOWNLOADLINK in identifierDict:
                         item = Scraper._getItemFromListItem(li, identifierDict[IdentifierType.DOWNLOADLINK], datasource)
                         if item is not None:
@@ -121,14 +120,19 @@ class Scraper:
                             noDownloadlink += 1
                             continue
 
-                        downloadResponse = Scraper._getSourceForUrl(Scraper._getCompleteLink(downloadLink, datasource), usingAjax=False)
+                        downloadResponse = Scraper._getSourceForUrl(urllib.parse.urljoin(datasource.url, downloadLink), usingAjax=False)
                         with DatabaseAccess.lock:
                             if downloadResponse is not None:
                                 document.url = downloadResponse.url
                                 documentId = dbAccess.addDocument(document, datasource)
-                                document.filepath = folderPath + "/" + str(documentId) + ".pdf"
+                                document.filepath = folderPath + "/" + str(documentId)
 
-                                urllib.request.urlretrieve(downloadResponse.url, document.filepath)
+                                if downloadResponse.info().get_content_subtype() == "html":
+                                    # options = {"quiet":""}
+                                    # pdfkit.from_url(downloadResponse.url, document.filepath, options=options)
+                                    urllib.request.urlretrieve(downloadResponse.url, document.filepath + ".html")
+                                else:
+                                    urllib.request.urlretrieve(downloadResponse.url, document.filepath + ".pdf")
 
                                 dbAccess.setDocumentFilePath(documentId, document.filepath)
                                 dbAccess.commit()
@@ -152,7 +156,7 @@ class Scraper:
                     nextPageLink = items[0].parent.get("href")
                 if nextPageLink is None:
                     break
-                source = Scraper._getSourceForUrl(Scraper._getCompleteLink(nextPageLink, datasource), datasource.isUsingAjax,
+                source = Scraper._getSourceForUrl(urllib.parse.urljoin(datasource.url, nextPageLink), datasource.isUsingAjax,
                                                   identifierDict.get(IdentifierType.AJAXWAIT))
                 soup = bs.BeautifulSoup(source, "lxml")
 
@@ -181,7 +185,7 @@ class Scraper:
             # if isUsingAjax:
             #     source2 = Scraper.openLinkAjax(liLink, datasource, driver)
             # else:
-            source = Scraper._getSourceForUrl(Scraper._getCompleteLink(li.get("href"), datasource), usingAjax=False)
+            source = Scraper._getSourceForUrl(urllib.parse.urljoin(datasource.url, li.get("href")), usingAjax=False)
             soup = bs.BeautifulSoup(source, "lxml")
             items = Scraper._getInnerItemsFromSoup(soup, identifier)
             if items is not None and len(items) > 0:
@@ -223,19 +227,23 @@ class Scraper:
 
 
     @staticmethod
-    def _getCompleteLink(link, datasource):
+    def _getFullLink(link, datasource):
+        fullLink = urllib.parse.urljoin(datasource.url, link)
+        return fullLink
 
-        try:
-            source = urllib.request.urlopen(link)
-            return link
-        except:
-            # Wenn Link nicht geöffnet werden kann -> wahrscheinlich relativer Link
-            slashIndex = re.search(r"[^/]/[^/]", datasource.url).start() + 1
-            motherUrl = datasource.url[0:slashIndex]
-            # Sonder- und Trennzeichen am Anfang des Links entfernen
-            link = re.sub(r"\A(\/|\.)*", "", link)
-            link = motherUrl + "/" + link
-            return link
+
+
+        # try:
+        #     source = urllib.request.urlopen(link)
+        #     return link
+        # except:
+        #     # Wenn Link nicht geöffnet werden kann -> wahrscheinlich relativer Link
+        #     slashIndex = re.search(r"[^/]/[^/]", datasource.url).start() + 1
+        #     motherUrl = datasource.url[0:slashIndex]
+        #     # Sonder- und Trennzeichen am Anfang des Links entfernen
+        #     link = re.sub(r"\A(\/|\.)*", "", link)
+        #     link = motherUrl + "/" + link
+        #     return link
 
 
 
