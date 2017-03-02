@@ -37,9 +37,9 @@ class DatabaseAccess:
 
 
 
-    def datasourceExists(self, name):
+    def datasourceExists(self, datasourceName):
             cursor = self.connection.cursor()
-            cursor.execute("SELECT id FROM datasources WHERE name = ?", (name,))
+            cursor.execute("SELECT id FROM datasources WHERE name = ?", (datasourceName,))
             r = cursor.fetchone()
             if r is None:
                 return False
@@ -55,13 +55,6 @@ class DatabaseAccess:
             if r is None:
                 return False
             return True
-
-
-    def documentTitlesInDb(self, datasourceName):
-            cursor = self.connection.cursor()
-            cursor.execute("SELECT title FROM dokumente AS doc INNER JOIN datasources AS ds ON doc.datasource = ds.id "
-                           "WHERE ds.name = ?", (datasourceName,))
-            return cursor.fetchall()
 
 
 
@@ -197,13 +190,13 @@ class DatabaseAccess:
             cursor.execute("UPDATE dokumente SET filepath = ? WHERE id = ?", (filePath, documentId))
 
 
-    def getDatasource(self, name):
-            if not self.datasourceExists(name):
+    def getDatasource(self, datasourceName):
+            if not self.datasourceExists(datasourceName):
                 print("Keine Webseite mit diesem Namen gefunden.")
                 return None
 
             cursor = self.connection.cursor()
-            cursor.execute("SELECT id, name, url, is_using_ajax FROM datasources WHERE name = ?", (name,))
+            cursor.execute("SELECT id, name, url, is_using_ajax FROM datasources WHERE name = ?", (datasourceName,))
             datasourceRow = cursor.fetchone()
 
             cursor.execute("SELECT id, tag_name, class, type, innerIdentifier, isTopIdentifier FROM html_identifier "

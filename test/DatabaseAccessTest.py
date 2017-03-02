@@ -35,31 +35,6 @@ class DatabaseAccessTest(unittest.TestCase):
         dbAcces.close()
         os.remove("test.db")
 
-    def test_documentTitlesInDb(self):
-        dbAcces = DatabaseAccessTest.createDbAccess()
-        datasource1 = DatasourceTest.createDatasource("testname1")
-        datasource2 = DatasourceTest.createDatasource("testname2")
-        doc1 = DocumentTest.createDocument("testtitle1", datasource1)
-        doc2 = DocumentTest.createDocument("testtitle2", datasource1)
-        doc3 = DocumentTest.createDocument("testtitle3", datasource2)
-        doc4 = DocumentTest.createDocument("testtitle4", datasource2)
-
-
-        self.assertEqual(len(dbAcces.documentTitlesInDb(datasource1.name)),0)
-
-        dbAcces.addDatasource(datasource1)
-        dbAcces.addDatasource(datasource2)
-        dbAcces.addDocument(doc1, datasource1)
-        dbAcces.addDocument(doc2, datasource1)
-        dbAcces.addDocument(doc3, datasource2)
-        dbAcces.addDocument(doc4, datasource2)
-
-        docTitles = dbAcces.documentTitlesInDb(datasource1.name)
-        self.assertTrue(docTitles[0], "testtitle1")
-        self.assertTrue(docTitles[1], "testtitle2")
-
-        dbAcces.close()
-        os.remove("test.db")
 
     def test_addDatasource(self):
         dbAcces = DatabaseAccessTest.createDbAccess()

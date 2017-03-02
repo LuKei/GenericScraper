@@ -6,21 +6,27 @@ from Scraper import Scraper
 
 app = Flask(__name__)
 latestType = IdentifierType.NEXTPAGE.value
+datasourcesBeingScraped = []
 
 @app.route("/")
 def showMain():
     with DatabaseAccess.lock:
         datasources = getDbAccess().getDatasources()
-        return render_template("main.html", datasources=datasources)
+        return render_template("main.html", datasources=datasources, datasourcesBeingScraped=datasourcesBeingScraped)
 
 
 
 @app.route("/datasources/<name>/scrape/")
 def scrapeDatasource(name):
     with DatabaseAccess.lock:
-        datasource = getDbAccess().getDatasource(name=name)
+        datasource = getDbAccess().getDatasource(datasourceName=name)
 
-    Scraper.startScrapingDatasource(datasource)
+    if name in datasourcesBeingScraped:
+        Scraper.stopScrapingDatasource(datasource)
+        datasourcesBeingScraped.remove(name)
+    else:
+        Scraper.startScrapingDatasource(datasource)
+        datasourcesBeingScraped.append(name)
 
     return redirect(url_for("showMain"))
 
