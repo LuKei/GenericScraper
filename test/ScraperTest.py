@@ -270,6 +270,6 @@ class ScraperTest(unittest.TestCase):
                        downloadLinkIdentifier]
 
         datasource = Datasource("Bundesfinanzhof",
-                                "https://juris.bundesfinanzhof.de/cgi-bin/rechtsprechung/list.py?Gericht=bfh&Art=en",
+                                "https://juris.bundesfinanzhof.de/cgi-bin/rechtsprechung/list.py?Gericht=bfh&Art=en&Datum=2012",
                                 identifiers=identifiers,)
         return datasource

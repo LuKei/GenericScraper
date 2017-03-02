@@ -206,6 +206,7 @@ class ScraperThread(threading.Thread):
 
 
     def _getFullLink(self, link, soup):
+        url = self.datasource.url
         baseItems = self._getInnerItemsFromSoup(soup, HtmlIdentifier("base"))
         if len(baseItems) > 0:
             url = baseItems[0].get("href")
