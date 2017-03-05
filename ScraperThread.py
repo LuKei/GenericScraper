@@ -9,6 +9,7 @@ import datetime
 import traceback
 import os
 import threading
+from enum import Enum
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -17,13 +18,14 @@ from selenium.webdriver.support import expected_conditions as EC
 
 class ScraperThread(threading.Thread):
 
-    def __init__(self, datasource, dbAccess):
+    def __init__(self, datasource, dbAccess, parser="html5lib"):
         super(ScraperThread, self).__init__()
         self.datasource = datasource
         self.dbAccess = dbAccess
         self.name= "Thread-" + datasource.name
         self.driver = None
         self.stopFlag = False
+        self.parser = parser
 
 
     def run(self):
@@ -45,7 +47,7 @@ class ScraperThread(threading.Thread):
             os.makedirs(folderPath)  # Ordner für .pdfs anlegen, falls noch nicht vorhanden
 
         source = self._getSourceForUrl(self.datasource.url, self.datasource.isUsingAjax, identifierDict.get(IdentifierType.AJAXWAIT, None))
-        soup = bs.BeautifulSoup(source, "lxml")
+        soup = bs.BeautifulSoup(source, self.parser)
 
         i = 0
 
@@ -57,7 +59,7 @@ class ScraperThread(threading.Thread):
                     break
                 try:
                     i += 1
-                    print(i)
+                    print(self.datasource.name + ": " + str(i))
 
                     document = Document(None, None, self.datasource, DatasourceType.GESETZESTEXTE, None, None)
 
@@ -125,6 +127,7 @@ class ScraperThread(threading.Thread):
                 except Exception as e:
                     with DatabaseAccess.lock:
                         self.dbAccess.rollback()
+                    exceptionCaught += 1
                     self._writeToLog("Exception caught at index: " + str(i),
                                         path=os.path.expanduser(r"~\Desktop\\") + "excLog_" + self.datasource.name + ".txt")
                     traceback.print_exc(file=open(os.path.expanduser(r"~\Desktop\\") + "excLog_" + self.datasource.name + ".txt", "a+"))
@@ -140,7 +143,7 @@ class ScraperThread(threading.Thread):
                     break
                 source = self._getSourceForUrl(self._getFullLink(nextPageLink, soup), self.datasource.isUsingAjax,
                                                identifierDict.get(IdentifierType.AJAXWAIT))
-                soup = bs.BeautifulSoup(source, "lxml")
+                soup = bs.BeautifulSoup(source, self.parser)
 
         if self.driver is not None:
             self.driver.close()
@@ -167,7 +170,7 @@ class ScraperThread(threading.Thread):
         else:
             # Wenn nichts im ListItem gefunden -> auf Seite des ListItems suchen
             source = self._getSourceForUrl(self._getFullLink(li.get("href"), soup), usingAjax=False)
-            soup = bs.BeautifulSoup(source, "lxml")
+            soup = bs.BeautifulSoup(source, self.parser)
             items = self._getInnerItemsFromSoup(soup, identifier)
             if items is not None and len(items) > 0:
                 item = items[0]
@@ -242,7 +245,7 @@ class ScraperThread(threading.Thread):
         for item in items:
             if identifier.class_ is None:
                 # innerItems += item.find_all(identifier.tagName, attrs=identifier.getAdditionalAttributesDict())
-                innerItems += item.find_all(lambda tag: self._matchTag(tag, identifier))
+                innerItems += item.find_all(lambda tag: self._matchTag(tag, identifier), recursive=False)
             else:
                 classes = identifier.class_.split(" ")
                 cssSelector = identifier.tagName
