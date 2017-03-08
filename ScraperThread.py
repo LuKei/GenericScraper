@@ -9,7 +9,7 @@ import datetime
 import traceback
 import os
 import threading
-from enum import Enum
+import time
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -31,9 +31,9 @@ class ScraperThread(threading.Thread):
     def run(self):
 
         # Variablen für logging
-        scrapedDocuments, sameDocument, noDownloadlink, exceptionCaught = 0, 0, 0, 0
+        scrapedDocuments, sameDocument, noDownloadlink, noListItemLink, exceptionCaught, i = 0, 0, 0, 0, 0, 0
 
-        self._writeToLog("Started Scraping: " + str(datetime.datetime.now().time()))
+        self._writeToLog("Started Scraping: " + str(datetime.datetime.now()))
 
         with DatabaseAccess.lock:
             if not self.dbAccess.datasourceExists(self.datasource.name):
@@ -49,36 +49,47 @@ class ScraperThread(threading.Thread):
         source = self._getSourceForUrl(self.datasource.url, self.datasource.isUsingAjax, identifierDict.get(IdentifierType.AJAXWAIT, None))
         soup = bs.BeautifulSoup(source, self.parser)
 
-        i = 0
+        lastLiLink = ""
 
         while not self.stopFlag:
 
             # alle ListItems durchlaufen
             for li in self._getInnerItemsFromSoup(soup, identifierDict[IdentifierType.LISTITEM]):
+                i += 1
+                print(self.datasource.name + ": " + str(i))
+
                 if self.stopFlag:
                     break
                 try:
-                    i += 1
-                    print(self.datasource.name + ": " + str(i))
+                    if IdentifierType.LISTITEMLINK in identifierDict:
+                        liDownloadlinkitem = self._getItemFromListItem(li, identifierDict[IdentifierType.LISTITEMLINK])
+                        if liDownloadlinkitem is not None:
+                            liLink = self._getFullLink(liDownloadlinkitem.get("href"), soup)
+                        else:
+                            noListItemLink += 1
+                    else:
+                        liLink = self._getFullLink(li.get("href"), soup)
+                    if liLink == lastLiLink:
+                        continue
 
-                    document = Document(None, None, self.datasource, DatasourceType.GESETZESTEXTE, None, None)
+                    lastLiLink = liLink
+
+                    liSource = self._getSourceForUrl(liLink, usingAjax=False)
+                    liSoup = bs.BeautifulSoup(liSource, self.parser)
+
+                    document = Document(None, None, self.datasource, DatasourceType.GESETZESTEXTE, None, time.strftime("%d.%m.%Y"))
 
                     if IdentifierType.DOCUMENTTITLE in identifierDict:
-                        item = self._getItemFromListItem(li, identifierDict[IdentifierType.DOCUMENTTITLE], soup)
+                        item = self._getItemFromListItemSoup(li, liSoup, identifierDict[IdentifierType.DOCUMENTTITLE])
                         if item is not None:
                             document.title = item.text.strip()
                     if document.title is None:
                         document.title = li.text.strip()
 
                     if IdentifierType.DOCUMENTSUBTITLE in identifierDict:
-                        item = self._getItemFromListItem(li, identifierDict[IdentifierType.DOCUMENTSUBTITLE], soup)
+                        item = self._getItemFromListItemSoup(li, liSoup, identifierDict[IdentifierType.DOCUMENTSUBTITLE])
                         if item is not None:
                             document.title += item.text.strip()
-
-                    if IdentifierType.DATEIDENTIFIER in identifierDict:
-                        item = self._getItemFromListItem(li, identifierDict[IdentifierType.DATEIDENTIFIER], soup)
-                        if item is not None:
-                            document.date = item.text.strip()
 
                     with DatabaseAccess.lock:
                         if self.dbAccess.documentExists(document.title, self.datasource.name):
@@ -97,7 +108,7 @@ class ScraperThread(threading.Thread):
                                 continue
 
                     if IdentifierType.DOWNLOADLINK in identifierDict:
-                        item = self._getItemFromListItem(li, identifierDict[IdentifierType.DOWNLOADLINK], soup)
+                        item = self._getItemFromListItemSoup(li, liSoup, identifierDict[IdentifierType.DOWNLOADLINK])
                         if item is not None:
                             downloadLink = item.get("href")
                         else:
@@ -131,29 +142,36 @@ class ScraperThread(threading.Thread):
                     self._writeToLog("Exception caught at index: " + str(i),
                                         path=os.path.expanduser(r"~\Desktop\\") + "excLog_" + self.datasource.name + ".txt")
                     traceback.print_exc(file=open(os.path.expanduser(r"~\Desktop\\") + "excLog_" + self.datasource.name + ".txt", "a+"))
-
-            items = self._getInnerItemsFromSoup(soup, identifierDict[IdentifierType.NEXTPAGE])
-            if self.stopFlag or len(items) == 0:
-                break
-            else:
-                nextPageLink = items[0].get("href")
-                if nextPageLink is None:
-                    nextPageLink = items[0].parent.get("href")
-                if nextPageLink is None:
+            try:
+                items = self._getInnerItemsFromSoup(soup, identifierDict[IdentifierType.NEXTPAGE])
+                if self.stopFlag or len(items) == 0:
                     break
-                source = self._getSourceForUrl(self._getFullLink(nextPageLink, soup), self.datasource.isUsingAjax,
-                                               identifierDict.get(IdentifierType.AJAXWAIT))
-                soup = bs.BeautifulSoup(source, self.parser)
+                else:
+                    nextPageLink = items[0].get("href")
+                    if nextPageLink is None:
+                        nextPageLink = items[0].parent.get("href")
+                    if nextPageLink is None:
+                        break
+                    source = self._getSourceForUrl(self._getFullLink(nextPageLink, soup), self.datasource.isUsingAjax,
+                                                   identifierDict.get(IdentifierType.AJAXWAIT))
+                    soup = bs.BeautifulSoup(source, self.parser)
+            except Exception as e:
+                exceptionCaught += 1
+                self._writeToLog("Exception caught at index: " + str(i) + " (while trying to navigate to next page)",
+                                 path=os.path.expanduser(r"~\Desktop\\") + "excLog_" + self.datasource.name + ".txt")
+                traceback.print_exc(file=open(os.path.expanduser(r"~\Desktop\\") + "excLog_" + self.datasource.name + ".txt", "a+"))
+                break
 
         if self.driver is not None:
             self.driver.close()
 
         if self.stopFlag:
-            self._writeToLog("Stopped Scraping: " + str(datetime.datetime.now().time()))
+            self._writeToLog("Stopped Scraping: " + str(datetime.datetime.now()))
         else:
-            self._writeToLog("Finished Scraping: " + str(datetime.datetime.now().time()))
+            self._writeToLog("Finished Scraping: " + str(datetime.datetime.now()))
         self._writeToLog("Scraped documents: " + str(scrapedDocuments))
         self._writeToLog("Not scraped because of same name: " + str(sameDocument))
+        self._writeToLog("Not scraped because list item link was not fount: " + str(noListItemLink))
         self._writeToLog("Not scraped because download link was not found: " + str(noDownloadlink))
         self._writeToLog("Not scraped because an exception occured: " + str(exceptionCaught))
         self._writeToLog("\n\n\n")
@@ -161,20 +179,23 @@ class ScraperThread(threading.Thread):
 
 
 
-    def _getItemFromListItem(self, li, identifier, soup):
+    def _getItemFromListItemSoup(self, li, liSoup, identifier):
         # Zuerst im ListItem suchen
+        item = self._getItemFromListItem(li, identifier)
+        if item is None:
+            # Wenn nichts im ListItem gefunden -> auf Seite des ListItems suchen
+            items = self._getInnerItemsFromSoup(liSoup, identifier)
+            if items is not None and len(items) > 0:
+                item = items[0]
+
+        return item
+
+
+    def _getItemFromListItem(self, li, identifier):
         item = None
         items = self._getInnerItemsFromItems([li], identifier)
         if items is not None and len(items) > 0:
             item = items[0]
-        else:
-            # Wenn nichts im ListItem gefunden -> auf Seite des ListItems suchen
-            source = self._getSourceForUrl(self._getFullLink(li.get("href"), soup), usingAjax=False)
-            soup = bs.BeautifulSoup(source, self.parser)
-            items = self._getInnerItemsFromSoup(soup, identifier)
-            if items is not None and len(items) > 0:
-                item = items[0]
-
         return item
 
 

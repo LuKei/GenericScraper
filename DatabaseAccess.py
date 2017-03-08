@@ -16,20 +16,20 @@ class DatabaseAccess:
         self.connection = sqlite3.connect(filePath + filename + ".db",check_same_thread=False)
         cursor = self.connection.cursor()
 
-        cursor.execute("CREATE TABLE IF NOT EXISTS datasources(id INTEGER PRIMARY KEY, name TEXT NOT NULL, url TEXT NOT NULL,"
+        cursor.execute("CREATE TABLE IF NOT EXISTS datasource(id INTEGER PRIMARY KEY, name TEXT NOT NULL, url TEXT NOT NULL,"
                        "is_using_ajax BOOLEAN NOT NULL)")
 
         cursor.execute("CREATE TABLE IF NOT EXISTS datasources_type(id INTEGER PRIMARY KEY, name TEXT NOT NULL)")
 
-        cursor.execute("CREATE TABLE IF NOT EXISTS dokumente(id INTEGER PRIMARY KEY, datasource INTEGER NOT NULL, "
+        cursor.execute("CREATE TABLE IF NOT EXISTS document(id INTEGER PRIMARY KEY, datasource INTEGER NOT NULL, "
                        "datasources_type INTEGER, url TEXT NOT NULL, title TEXT NOT NULL, date DATETIME,"
-                       "filepath TEXT, FOREIGN KEY (datasource) REFERENCES datasources(id),"
+                       "filepath TEXT, FOREIGN KEY (datasource) REFERENCES datasource(id),"
                        "FOREIGN KEY (datasources_type) REFERENCES datasources_type(id))")
 
         cursor.execute("CREATE  TABLE  IF NOT EXISTS html_identifier(id INTEGER PRIMARY KEY, tag_name TEXT NOT NULL, "
                        "class TEXT, type INTEGER NOT NULL, datasource INTEGER NOT NULL, "
                        "innerIdentifier INTEGER, isTopIdentifier BOOLEAN NOT NULL,"
-                       "FOREIGN KEY (datasource) REFERENCES datasources(id))")
+                       "FOREIGN KEY (datasource) REFERENCES datasource(id))")
 
         cursor.execute("CREATE TABLE IF NOT EXISTS html_attribute(id INTEGER PRIMARY KEY, name TEXT NOT NULL, value TEXT NOT NULL,"
                        "exact_match BOOLEAN NOT NULL, html_identifier INTEGER NOT NULL, "
@@ -39,7 +39,7 @@ class DatabaseAccess:
 
     def datasourceExists(self, datasourceName):
             cursor = self.connection.cursor()
-            cursor.execute("SELECT id FROM datasources WHERE name = ?", (datasourceName,))
+            cursor.execute("SELECT id FROM datasource WHERE name = ?", (datasourceName,))
             r = cursor.fetchone()
             if r is None:
                 return False
@@ -49,7 +49,7 @@ class DatabaseAccess:
 
     def documentExists(self, title, datasourceName):
             cursor = self.connection.cursor()
-            cursor.execute("SELECT doc.id FROM dokumente AS doc INNER JOIN datasources AS ds ON doc.datasource = ds.id "
+            cursor.execute("SELECT doc.id FROM document AS doc INNER JOIN datasource AS ds ON doc.datasource = ds.id "
                            "WHERE doc.title = ? AND ds.name = ?", (title,datasourceName))
             r = cursor.fetchone()
             if r is None:
@@ -66,9 +66,9 @@ class DatabaseAccess:
             cursor = self.connection.cursor()
 
             dattasourceToInsert = (None, datasource.name, datasource.url, datasource.isUsingAjax)
-            cursor.execute("INSERT INTO datasources VALUES(?,?,?,?)", dattasourceToInsert)
+            cursor.execute("INSERT INTO datasource VALUES(?,?,?,?)", dattasourceToInsert)
 
-            r = cursor.execute("SELECT id FROM datasources AS ds WHERE ds.name = ?", (datasource.name,)).fetchone()
+            r = cursor.execute("SELECT id FROM datasource AS ds WHERE ds.name = ?", (datasource.name,)).fetchone()
             datasourceId = int(r[0])
 
             if datasource.identifiers is not None:
@@ -86,7 +86,7 @@ class DatabaseAccess:
 
             cursor = self.connection.cursor()
 
-            r = cursor.execute("SELECT id FROM datasources WHERE name = ?", (datasourceName,)).fetchone()
+            r = cursor.execute("SELECT id FROM datasource WHERE name = ?", (datasourceName,)).fetchone()
             datasourceId = r[0]
 
             r = cursor.execute("SELECT id FROM html_identifier WHERE datasource = ? AND type= ?",
@@ -170,7 +170,7 @@ class DatabaseAccess:
                 return -1
 
             cursor = self.connection.cursor()
-            r = cursor.execute("SELECT id FROM datasources AS ds WHERE ds.name = ?", (datasource.name,)).fetchone()
+            r = cursor.execute("SELECT id FROM datasource AS ds WHERE ds.name = ?", (datasource.name,)).fetchone()
             if r is None:
                 print("Eine Webseite mit diesem Namen existiert nicht. Fügen Sie den Gesetzestext einer exsitierenden "
                       "Webseite hinzu")
@@ -179,7 +179,7 @@ class DatabaseAccess:
             datasourceId = int(r[0])
 
             tupleToInsert = (None, datasourceId, document.datasourceType.value, document.url, document.title, document.date, document.filepath)
-            cursor.execute("INSERT INTO dokumente VALUES(?,?,?,?,?,?,?)", tupleToInsert)
+            cursor.execute("INSERT INTO document VALUES(?,?,?,?,?,?,?)", tupleToInsert)
             r = cursor.execute("SELECT last_insert_rowid()").fetchone()
             documentId = int(r[0])
             return documentId
@@ -187,7 +187,7 @@ class DatabaseAccess:
 
     def setDocumentFilePath(self, documentId, filePath):
             cursor = self.connection.cursor()
-            cursor.execute("UPDATE dokumente SET filepath = ? WHERE id = ?", (filePath, documentId))
+            cursor.execute("UPDATE document SET filepath = ? WHERE id = ?", (filePath, documentId))
 
 
     def getDatasource(self, datasourceName):
@@ -196,7 +196,7 @@ class DatabaseAccess:
                 return None
 
             cursor = self.connection.cursor()
-            cursor.execute("SELECT id, name, url, is_using_ajax FROM datasources WHERE name = ?", (datasourceName,))
+            cursor.execute("SELECT id, name, url, is_using_ajax FROM datasource WHERE name = ?", (datasourceName,))
             datasourceRow = cursor.fetchone()
 
             cursor.execute("SELECT id, tag_name, class, type, innerIdentifier, isTopIdentifier FROM html_identifier "
@@ -215,7 +215,7 @@ class DatabaseAccess:
 
     def getDatasources(self):
             cursor = self.connection.cursor()
-            cursor.execute("SELECT name FROM datasources")
+            cursor.execute("SELECT name FROM datasource")
             nameRows = cursor.fetchall()
 
             if len(nameRows) > 0:
@@ -267,7 +267,7 @@ class DatabaseAccess:
 
             cursor = self.connection.cursor()
             cursor.execute("SELECT doc.title, doc.filepath, doc.datasources_type, doc.url, doc.date "
-                           "FROM dokumente AS doc INNER JOIN datasources AS ds ON doc.datasource = ds.id "
+                           "FROM document AS doc INNER JOIN datasource AS ds ON doc.datasource = ds.id "
                            "WHERE doc.title = ? AND ds.name = ?", (title, datasource.name))
             r = cursor.fetchone()
             return Document(r[0], r[1], datasource, r[2], r[3], r[4])
@@ -278,7 +278,7 @@ class DatabaseAccess:
 
             cursor = self.connection.cursor()
             cursor.execute("SELECT doc.title, doc.filepath, doc.datasources_type, doc.url, doc.date "
-                           "FROM dokumente AS doc INNER JOIN datasources AS ds ON doc.datasource = ds.id "
+                           "FROM document AS doc INNER JOIN datasource AS ds ON doc.datasource = ds.id "
                            "WHERE ds.name = ?", (datasource.name,))
             rows = cursor.fetchall()
 
@@ -294,8 +294,8 @@ class DatabaseAccess:
                 return
 
             cursor = self.connection.cursor()
-            cursor.execute("DELETE FROM dokumente WHERE title = ? AND "
-                           "datasource = (SELECT id FROM datasources WHERE name = ?)", (title, datasource.name))
+            cursor.execute("DELETE FROM document WHERE title = ? AND "
+                           "datasource = (SELECT id FROM datasource WHERE name = ?)", (title, datasource.name))
 
 
     def commit(self):
