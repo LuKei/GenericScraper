@@ -23,6 +23,7 @@ class DatasourceType(Enum):
     ENTSCHEIDUNGEN = 2
     GESETZESTEXTE = 4
     PRESSEMITTEILUNGEN = 5
+    UNKNOWN = None
 
 
 

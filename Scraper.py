@@ -8,8 +8,8 @@ class Scraper:
 
 
     @staticmethod
-    def startScrapingDatasource(datasource):
-        newThread = ScraperThread(datasource, DatabaseAccess())
+    def startScrapingDatasource(datasource, datasourceType):
+        newThread = ScraperThread(datasource, datasourceType, DatabaseAccess())
         newThread.daemon = True
         Scraper.threads.append(newThread)
         newThread.start()

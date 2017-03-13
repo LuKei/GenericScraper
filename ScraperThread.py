@@ -18,9 +18,10 @@ from selenium.webdriver.support import expected_conditions as EC
 
 class ScraperThread(threading.Thread):
 
-    def __init__(self, datasource, dbAccess, parser="html5lib"):
+    def __init__(self, datasource, datasourceType, dbAccess, parser="html5lib"):
         super(ScraperThread, self).__init__()
         self.datasource = datasource
+        self.datasourceType = datasourceType
         self.dbAccess = dbAccess
         self.name= "Thread-" + datasource.name
         self.driver = None
@@ -77,7 +78,7 @@ class ScraperThread(threading.Thread):
                     liSource = self._getSourceForUrl(liLink, usingAjax=False)
                     liSoup = bs.BeautifulSoup(liSource, self.parser)
 
-                    document = Document(None, None, self.datasource, DatasourceType.GESETZESTEXTE, None, time.strftime("%d.%m.%Y"))
+                    document = Document(None, None, self.datasource, self.datasourceType, None, time.strftime("%d.%m.%Y"))
 
                     if IdentifierType.DOCUMENTTITLE in identifierDict:
                         item = self._getItemFromListItemSoup(li, liSoup, identifierDict[IdentifierType.DOCUMENTTITLE])
@@ -94,7 +95,6 @@ class ScraperThread(threading.Thread):
                     with DatabaseAccess.lock:
                         if self.dbAccess.documentExists(document.title, self.datasource.name):
                             # Wenn Gesetzestext bereits in der Db: neuere Version verwenden.
-                            # Wenn kein Datum gescraped werden kann -> überspringen
                             documentInDb = self.dbAccess.getDocument(document.title, self.datasource)
                             if document.date is not None:
                                 if documentInDb.date is None or documentInDb.date < document.date:

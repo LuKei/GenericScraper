@@ -1,6 +1,6 @@
 from flask import Flask, render_template, g, flash, request, url_for, redirect
 from DatabaseAccess import DatabaseAccess
-from Datasource import Datasource
+from Datasource import Datasource, DatasourceType
 from HtmlIdentifier import HtmlIdentifier, HtmlAttribute, IdentifierType
 from Scraper import Scraper
 
@@ -12,12 +12,14 @@ datasourcesBeingScraped = []
 def showMain():
     with DatabaseAccess.lock:
         datasources = getDbAccess().getDatasources()
-        return render_template("main.html", datasources=datasources, datasourcesBeingScraped=datasourcesBeingScraped)
+        return render_template("main.html", datasources=datasources, datasourcesBeingScraped=datasourcesBeingScraped,
+                               datsourceTypes=DatasourceType)
 
 
 
 @app.route("/datasources/<name>/scrape/")
-def scrapeDatasource(name):
+@app.route("/datasources/<name>/scrape/<datasourceType>")
+def scrapeDatasource(name, datasourceType=DatasourceType.UNKNOWN):
     with DatabaseAccess.lock:
         datasource = getDbAccess().getDatasource(datasourceName=name)
 
@@ -25,7 +27,8 @@ def scrapeDatasource(name):
         Scraper.stopScrapingDatasource(datasource)
         datasourcesBeingScraped.remove(name)
     else:
-        Scraper.startScrapingDatasource(datasource)
+        datasourceType = DatasourceType[datasourceType]
+        Scraper.startScrapingDatasource(datasource, datasourceType)
         datasourcesBeingScraped.append(name)
 
     return redirect(url_for("showMain"))

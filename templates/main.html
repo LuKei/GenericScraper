@@ -8,17 +8,27 @@
         <div class="thumbnail">
           <div class="caption">
             <h3>{{ datasource.name }}</h3>
+          </div>
             <p>Cras justo odio, dapibus ac facilisis in, egestas eget quam. Donec id elit non mi porta gravida at eget metus. Nullam id dolor id nibh ultricies vehicula ut id elit.</p>
             <p>
-                <a href="{{'/datasources/' + datasource.name + '/scrape/'}}" class="btn btn-primary" role="button">
-                    {% if datasource.name in datasourcesBeingScraped %}
+                {% if datasource.name in datasourcesBeingScraped %}
+                    <a href="{{'/datasources/' + datasource.name + '/scrape/'}}" class="btn btn-primary btn-group" role="button">
                         Stop Scraping...
-                    {% else %}
-                        Scrape...
-                    {% endif %}</a>
-                <a href="{{'/datasources/' + datasource.name + '/identifiers/'}}" class="btn btn-default" role="button">View Identifiers</a>
-                <a href="{{'/datasources/' + datasource.name + '/addIdentifier/'}}" class="btn btn-default" role="button">Add identifier</a></p>
-          </div>
+                    </a>
+                {% else %}
+                    <div class="dropdown btn-group">
+                      <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown">Scrape as...
+                      <span class="caret"></span></button>
+                      <ul class="dropdown-menu">
+                          {% for type in datsourceTypes %}
+                            <li><a href="{{'/datasources/' + datasource.name + '/scrape/' + type.name }}">{{ type.name }}</a></li>
+                          {% endfor %}
+                      </ul>
+                    </div>
+                {% endif %}
+                <a href="{{'/datasources/' + datasource.name + '/identifiers/'}}" class="btn btn-default btn-group" role="button">View Identifiers</a>
+                <a href="{{'/datasources/' + datasource.name + '/addIdentifier/'}}" class="btn btn-default btn-group" role="button">Add identifier</a>
+          </p>
         </div>
       </div>
     {% endfor %}
