@@ -53,8 +53,7 @@ class ScraperThread(threading.Thread):
 
         while not self.stopFlag:
 
-            listItems = self._getInnerItemsFromSoup(
-                soup, identifierDict[IdentifierType.LISTITEM])
+            listItems = self._getInnerItemsFromItems([soup], identifierDict[IdentifierType.LISTITEM], recursive=True)
 
             for li in listItems:
 
@@ -102,6 +101,7 @@ class ScraperThread(threading.Thread):
                             documentInDb = self.dbAccess.getDocument(document.title, self.datasource)
                             self.dbAccess.removeDocument(documentInDb.title, self.datasource)
                             self.dbAccess.commit()
+                            os.remove(path=documentInDb.filepath)
                             sameDocument += 1
 
                     if IdentifierType.DOWNLOADLINK in identifierDict:
@@ -120,14 +120,16 @@ class ScraperThread(threading.Thread):
                             with DatabaseAccess.lock:
                                 documentId = self.dbAccess.addDocument(document, self.datasource)
                                 self.dbAccess.commit()
-                            document.filepath = folderPath + "/" + str(documentId)
+                            document.filepath = folderPath + "\\" + str(documentId)
 
                             if downloadResponse.info().get_content_subtype() == "html":
+                                document.filepath += ".html"
                                 urllib.request.urlretrieve(downloadResponse.url,
-                                                           document.filepath + ".html")
+                                                           document.filepath)
                             else:
+                                document.filepath += ".pdf"
                                 urllib.request.urlretrieve(downloadResponse.url,
-                                                           document.filepath + ".pdf")
+                                                           document.filepath)
                             with DatabaseAccess.lock:
                                 self.dbAccess.setDocumentFilePath(documentId, document.filepath)
                                 self.dbAccess.commit()
@@ -142,8 +144,7 @@ class ScraperThread(threading.Thread):
                     traceback.print_exc(file=open(os.path.expanduser(r"~\Desktop\\") + "excLog_"
                                                   + self.datasource.name + ".txt", "a+"))
             try:
-                items = self._getInnerItemsFromSoup(soup,
-                                                    identifierDict[IdentifierType.NEXTPAGE])
+                items = self._getInnerItemsFromItems([soup], identifierDict[IdentifierType.NEXTPAGE], recursive=True)
                 if self.stopFlag or len(items) == 0:
                     break
                 else:
@@ -186,7 +187,7 @@ class ScraperThread(threading.Thread):
         item = self._getItemFromListItem(li, identifier)
         if item is None:
             # Wenn nichts im ListItem gefunden -> auf Seite des ListItems suchen
-            items = self._getInnerItemsFromSoup(liSoup, identifier)
+            items = self._getInnerItemsFromItems([liSoup], identifier, recursive=True)
             if items is not None and len(items) > 0:
                 item = items[0]
 
@@ -233,7 +234,7 @@ class ScraperThread(threading.Thread):
 
     def _getFullLink(self, link, soup):
         url = self.datasource.url
-        baseItems = self._getInnerItemsFromSoup(soup, HtmlIdentifier("base"))
+        baseItems = self._getInnerItemsFromItems([soup], HtmlIdentifier("base"), recursive=True)
         if len(baseItems) > 0:
             url = baseItems[0].get("href")
 
@@ -242,34 +243,14 @@ class ScraperThread(threading.Thread):
 
 
 
-    def _getInnerItemsFromSoup(self, soup, topIdentifier):
-
-        items = []
-        if topIdentifier.class_ is None:
-            items = soup.find_all(lambda tag: self._matchTag(tag, topIdentifier),
-                                  recursive= True)
-        else:
-            classes = topIdentifier.class_.split(" ")
-            cssSelector = topIdentifier.tagName
-            for class_ in classes:
-                cssSelector += "." + class_
-            items += soup.select(cssSelector)
-
-        if topIdentifier.innerIdentifier is None:
-            return items
-        else:
-            return self._getInnerItemsFromItems(items, topIdentifier.innerIdentifier)
-
-
-
-    def _getInnerItemsFromItems(self, items, identifier):
+    def _getInnerItemsFromItems(self, items, identifier, recursive=False):
 
         innerItems = []
         for item in items:
             if identifier.class_ is None:
                 innerItems += item.find_all(
                     lambda tag: self._matchTag(tag, identifier),
-                    recursive=False)
+                    recursive=recursive)
             else:
                 classes = identifier.class_.split(" ")
                 cssSelector = identifier.tagName

@@ -7,7 +7,7 @@ import threading
 
 class DatabaseAccess:
 
-    defaultDbPath = os.path.expanduser(r"~\Desktop\\")
+    defaultDbPath = os.path.expanduser("~\Desktop\\")
     lock = threading.Lock()
 
     def __init__(self, filePath=defaultDbPath, filename="ScraperDb"):
