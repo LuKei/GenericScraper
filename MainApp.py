@@ -127,6 +127,14 @@ def addHtmlIdentifier(name, defaultType=-1):
 
 
 
+@app.route("/datasources/<name>/removeIdentifiers/<int:type>", methods=["GET"])
+def removeHtmlIdentifiers(name, type):
+    with DatabaseAccess.lock:
+        getDbAccess().removeIdentifiers(name, type)
+        getDbAccess().commit()
+    return redirect(url_for("showMain"))
+
+
 def getDbAccess():
     if not hasattr(g, "dbAccess"):
         g.dbAccess = DatabaseAccess()

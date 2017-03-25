@@ -27,6 +27,7 @@
                 </ul>
             {% endfor %}
             </ul>
+            <a href="{{'/datasources/' + datasource.name + '/removeIdentifiers/' + i|string}}" class="btn btn-default">Delete Identifiers</a>
         </div>
     {% endfor %}
 </div>

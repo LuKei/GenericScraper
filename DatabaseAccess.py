@@ -288,6 +288,24 @@ class DatabaseAccess:
 
             return texts
 
+    def removeIdentifiers(self, datasourceName, type):
+        cursor = self.connection.cursor()
+
+        cursor.execute("SELECT id FROM html_identifier WHERE datasource = (SELECT id FROM datasource WHERE name = ?)"
+                       "AND type=?", [datasourceName, type])
+        idRows = cursor.fetchall()
+
+        questionmarks = "?" * len(idRows)
+        deleteIdentifiersQuery = "DELETE FROM html_identifier WHERE id IN ({})".format(",".join(questionmarks))
+        deleteAttributesQuery = "DELETE FROM html_attribute WHERE html_identifier IN ({})".format(",".join(questionmarks))
+
+        idsTuple = ()
+        for row in idRows:
+            idsTuple += row
+
+        cursor.execute(deleteIdentifiersQuery, idsTuple)
+        cursor.execute(deleteAttributesQuery, idsTuple)
+
 
     def removeDocument(self, title, datasource):
             if not self.documentExists(title, datasource.name):
